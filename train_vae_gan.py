@@ -29,7 +29,7 @@ from tqdm import tqdm
 BS = args.batch_size
 EPOCHS = args.epochs
 w, h, c = 96, 96, 3
-generator_model, discriminator_model, vae_model, encoder, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=2, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, compile_vae=True)
+generator_model, discriminator_model, vae_model, encoder, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=2, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, use_vae=True, vae_use_sse=True)
 
 train_generator = data_generator('./anime-faces', height=h, width=w, channel=c, batch_size=BS, shuffle=True)
 

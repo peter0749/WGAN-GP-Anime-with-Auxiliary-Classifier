@@ -30,8 +30,8 @@ from tqdm import tqdm
 BS = args.batch_size
 EPOCHS = args.epochs
 w, h, c = 32, 32, 1
-generator_model, discriminator_model, vae_model, encoder, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=2, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, compile_vae=False)
-del vae_model
+generator_model, discriminator_model, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=2, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, use_vae=False)
+
 (x_train, _), (___, __) = mnist.load_data()
 x_train = (np.array(list(map(lambda x: resize(x, (h,w), order=1, preserve_range=True), x_train)), dtype=np.float32)[...,np.newaxis] - 127.5) / 127.5
 
@@ -51,6 +51,5 @@ for epoch in range(EPOCHS):
             t.write('GL: {:.2f}, '.format(np.mean(generator_model.train_on_batch(np.random.normal(0, args.std, (BS, 2)).astype(np.float32), None))))
             t.update()
     generate_images(decoder, './preview', h, w, c, 1.0, 15, 15, epoch, BS)
-    encoder.save('./encoder.h5')
     decoder.save('./decoder.h5')
     discriminator.save('./discriminator.h5')

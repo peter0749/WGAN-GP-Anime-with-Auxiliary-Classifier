@@ -212,26 +212,22 @@ def build_inception_residual_vae(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.
     decoder_model = inception_residual_decoder(shape[1:], c=c, latent_dim=latent_dim, dropout_rate=dropout_rate)
     outputs = decoder_model(z)
     
-    bce_loss = K.mean( 0.5 * K.sum(K.square(images - outputs), axis=-1) / (2*(epsilon_std**2)) + np.log(epsilon_std)) # gaussian_log_likelihood
-    kl_loss =  K.mean(-0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)) # KL-divergence
+    d_loss  = K.mean( 0.5 * K.sum(K.square(images - outputs), axis=-1) / (2*(epsilon_std**2)) + np.log(epsilon_std)) # gaussian_log_likelihood, may makes outputs blurry
+    kl_loss = K.mean(-0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)) # KL-divergence
 
     vae = Model([images], [outputs])
-    vae.add_loss(bce_loss) # add reconstruction loss (gaussian_log_likelihood) to decoder(generator)
+    vae.add_loss(d_loss) # add reconstruction loss (gaussian_log_likelihood) to decoder(generator)
     vae.add_loss(kl_loss,  inputs=[encoder_model]) # add KL-divergence loss to encoder
     vae.compile(optimizer='rmsprop', loss=None)
 
     return vae, encoder_model, decoder_model
 
-def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate=0.1, GRADIENT_PENALTY_WEIGHT=10, batch_size=8, compile_vae=False):
+def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate=0.1, GRADIENT_PENALTY_WEIGHT=10, batch_size=8, use_vae=False, vae_use_sse=True):
     
     vae_input = Input(shape=(h,w,c))
-
     encoder_model, shape = inception_residual_encoder(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=epsilon_std, dropout_rate=dropout_rate)
     z, z_mean, z_log_var = encoder_model(vae_input)
     generator = inception_residual_decoder(shape[1:], c=c, latent_dim=latent_dim, dropout_rate=dropout_rate)
-    vae_output = generator(z)
-
-    kl_loss = K.mean(-0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)) # KL-divergence
     
     discriminator = inception_residual_discriminator(h=h,w=w,c=c,dropout_rate=dropout_rate)
     for layer in discriminator.layers:
@@ -242,17 +238,21 @@ def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate
     generator_layers = generator(generator_input)
     
     discriminator_layers_for_generator = discriminator(generator_layers)
-    discriminator_layers_for_vae = discriminator(vae_output)
-    
     generator_model = Model(inputs=[generator_input], outputs=[discriminator_layers_for_generator])
-    vae_model = Model(inputs=[vae_input], outputs=[discriminator_layers_for_vae])
     generator_model.add_loss(K.mean(discriminator_layers_for_generator))
-    vae_model.add_loss(kl_loss, inputs=[encoder_model])
-    vae_model.add_loss(K.mean(discriminator_layers_for_vae))
-    
     # We use the Adam paramaters from Gulrajani et al.
     generator_model.compile(optimizer=Adam(0.0001, beta_1=0.5, beta_2=0.9), loss=None)
-    if compile_vae:
+    
+    if use_vae:
+        vae_output = generator(z)
+        d_loss  = K.mean( 0.5 * K.sum(K.square(vae_input - vae_output), axis=-1) / (2*(epsilon_std**2)) + np.log(epsilon_std)) # gaussian_log_likelihood
+        kl_loss = K.mean(-0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)) # KL-divergence
+        discriminator_layers_for_vae = discriminator(vae_output)
+        vae_model = Model(inputs=[vae_input], outputs=[discriminator_layers_for_vae])
+        vae_model.add_loss(kl_loss, inputs=[encoder_model])
+        vae_model.add_loss(K.mean(discriminator_layers_for_vae))
+        if vae_use_sse:
+            vae_model.add_loss(d_loss) # may makes outputs blurry
         vae_model.compile(optimizer=Adam(0.0001, beta_1=0.5, beta_2=0.9), loss=None)
 
     # Now that the generator_model is compiled, we can make the discriminator layers trainable.
@@ -291,7 +291,7 @@ def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate
                                                                                 + gradient_penalty_loss(averaged_samples_out, averaged_samples, GRADIENT_PENALTY_WEIGHT))
     discriminator_model.compile(optimizer=Adam(0.0001, beta_1=0.5, beta_2=0.9), loss=None)
 
-    return generator_model, discriminator_model, vae_model, encoder_model, generator, discriminator
+    return (generator_model, discriminator_model, vae_model, encoder_model, generator, discriminator) if use_vae else (generator_model, discriminator_model, generator, discriminator)
 
 if __name__ == '__main__':
     vae, encoder, decoder = build_inception_residual_vae(h=32, w=32, c=1, dropout_rate=0.2)
