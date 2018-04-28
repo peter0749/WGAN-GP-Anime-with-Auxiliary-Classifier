@@ -39,6 +39,7 @@ def get_all_data(images_path, height=128, width=128):
         if img.shape[0]!=height or img.shape[1]!=width:
             order = 2 if img.shape[0]<height or img.shape[1]<width else 0
             img = resize(img, (height, width), order=order, preserve_range=True)
+        return img
     images = (np.array([ read_img(imgp) for imgp in img_path_list], dtype=np.float32) - 127.5) / 127.5
     return images
     
