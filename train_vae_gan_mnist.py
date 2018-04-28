@@ -49,9 +49,11 @@ for epoch in range(EPOCHS):
             l_bound = r_bound - BS
             image_batch = x_train[l_bound:r_bound]
             noise = np.random.normal(0, args.std, (BS, 2)).astype(np.float32)
-            t.write('DL: {:.2f}, '.format(np.mean(discriminator_model.train_on_batch([image_batch, noise], None))))
-            t.write('GL: {:.2f}, '.format(np.mean(generator_model.train_on_batch(np.random.normal(0, args.std, (BS, 2)).astype(np.float32), None))))
-            t.write('VAE_L: {:.2f} '.format(np.mean(vae_model.train_on_batch(image_batch, None))))
+            msg = ''
+            msg += 'DL: {:.2f}, '.format(np.mean(discriminator_model.train_on_batch([image_batch, noise], None)))
+            msg += 'GL: {:.2f}, '.format(np.mean(generator_model.train_on_batch(np.random.normal(0, args.std, (BS, 2)).astype(np.float32), None)))
+            msg += 'VAE_L: {:.2f} '.format(np.mean(vae_model.train_on_batch(image_batch, None)))
+            t.set_description(msg)
             t.update()
     generate_images(decoder, './preview', h, w, c, 1.0, 15, 15, epoch, BS)
     encoder.save('./encoder.h5')

@@ -29,6 +29,20 @@ class mnist_generator(Sequence):
             x_batch[n] = np.clip((img.astype(np.float32)-127.5) / 127.5, -1, 1)
         return x_batch, None
 
+def get_all_data(images_path, height=128, width=128):
+    img_path_list = glob.glob(images_path+'/**/*.jpg') ## paths
+    img_path_list.extend(glob.glob(images_path+'/**/*.png'))
+    def read_img(img_name):
+        img = imread(img_name, as_grey=False)
+        if img.ndim==2:
+            img = gray2rgb(img)
+        if img.shape[0]!=height or img.shape[1]!=width:
+            order = 2 if img.shape[0]<height or img.shape[1]<width else 0
+            img = resize(img, (height, width), order=order, preserve_range=True)
+    images = (np.array([ read_img(imgp) for imgp in img_path_list], dtype=np.float32) - 127.5) / 127.5
+    return images
+    
+
 class data_generator(Sequence):
     def __init__(self, images_path, height=128, width=128, channel=3, batch_size=8, shuffle=True):
         self.bs = batch_size
