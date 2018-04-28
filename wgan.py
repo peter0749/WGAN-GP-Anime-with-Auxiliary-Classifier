@@ -47,7 +47,7 @@ for epoch in range(EPOCHS):
             t.write('GL: {:.2f}, '.format(np.mean(generator_model.train_on_batch(np.random.normal(0, args.std, (BS, 2)).astype(np.float32), None))))
             t.update()
     train_generator.random_shuffle()
-    generate_images(decoder, './preview', h, w, c, 1.0, 5, 5, epoch, BS)
+    generate_images(decoder, './preview', h, w, c, 1.0, 15, 15, epoch, BS)
     encoder.save('./encoder.h5')
     decoder.save('./decoder.h5')
     discriminator.save('./discriminator.h5')
