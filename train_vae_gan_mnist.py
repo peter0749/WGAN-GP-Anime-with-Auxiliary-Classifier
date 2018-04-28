@@ -6,6 +6,8 @@ parser.add_argument('--epochs', type=int, default=50, required=False,
                     help='epochs')
 parser.add_argument('--std', type=float, default=1.0, required=False,
                     help='sampling std')
+parser.add_argument('--use_sse', action='store_true', default=False,
+                    help='')
 args = parser.parse_args()
 
 import numpy as np
@@ -31,7 +33,7 @@ from tqdm import tqdm
 BS = args.batch_size
 EPOCHS = args.epochs
 w, h, c = 32, 32, 1
-generator_model, discriminator_model, vae_model, encoder, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=2, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, use_vae=True, vae_use_sse=True)
+generator_model, discriminator_model, vae_model, encoder, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=2, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, use_vae=True, vae_use_sse=args.use_sse)
 (x_train, _), (___, __) = mnist.load_data()
 x_train = (np.array(list(map(lambda x: resize(x, (h,w), order=1, preserve_range=True), x_train)), dtype=np.float32)[...,np.newaxis] - 127.5) / 127.5
 
