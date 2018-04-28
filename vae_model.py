@@ -144,9 +144,13 @@ def inception_residual_discriminator(h=128, w=128, c=3, dropout_rate=0.1):
 
     # block 3:
     b3_c1 = _res_conv(128, 1, dropout_rate, bn=True) (b2_c2)
-    b3_c2 = _res_conv(128, 2, dropout_rate) (b3_c1)
+    b3_c2 = _res_conv(128, 2, dropout_rate, bn=True) (b3_c1)
     
-    hidden = GlobalAveragePooling2D() (b3_c2)
+    # block 4:
+    b4_c1 = _res_conv(256, 1, dropout_rate, bn=True) (b3_c2)
+    b4_c2 = _res_conv(256, 2, dropout_rate) (b4_c1)
+    
+    hidden = GlobalAveragePooling2D() (b4_c2)
     dis = Dense(1, kernel_initializer='he_normal') (hidden) # We don't need 'sigmoid' here!!
     model = Model([inputs], [dis])
     return model
@@ -165,16 +169,20 @@ def inception_residual_encoder(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0,
 
     # block 3:
     b3_c1 = _res_conv(128, 1, dropout_rate, bn=True) (b2_c2)
-    b3_c2 = _res_conv(128, 2, dropout_rate) (b3_c1)
+    b3_c2 = _res_conv(128, 2, dropout_rate, bn=True) (b3_c1)
     
-    hidden = GlobalAveragePooling2D() (b3_c2)
+    # block 4:
+    b4_c1 = _res_conv(256, 1, dropout_rate, bn=True) (b3_c2)
+    b4_c2 = _res_conv(256, 2, dropout_rate) (b4_c1)
+    
+    hidden = GlobalAveragePooling2D() (b4_c2)
 
     z_mean =    Dense(latent_dim)(hidden)
     z_log_var = Dense(latent_dim)(hidden)
 
     z = Lambda(sampling, output_shape=(latent_dim,), arguments={'latent_dim':latent_dim, 'epsilon_std':epsilon_std}) ([z_mean, z_log_var])
     model = Model([inputs], [z, z_mean, z_log_var])
-    return model, b3_c2.shape
+    return model, b4_c2.shape
 
 def inception_residual_decoder(original_dim, c=3, latent_dim=2, dropout_rate=0.1):
 
@@ -184,18 +192,22 @@ def inception_residual_decoder(original_dim, c=3, latent_dim=2, dropout_rate=0.1
     reshape = Reshape(list(map(int, original_dim))) (transform)
 
     # block 5:
-    b5_u1 = up(128, bn=True) (reshape)
-    b5_c2 = _res_conv(128, 1, 0, bn=True) (b5_u1)
+    b5_u1 = up(256, bn=True) (reshape)
+    b5_c2 = _res_conv(256, 1, 0, bn=True) (b5_u1)
 
     # block 6:
-    b6_u1 = up(64, bn=True) (b5_c2)
-    b6_c2 = _res_conv(64, 1, 0, bn=True) (b6_u1)
+    b6_u1 = up(128, bn=True) (b5_c2)
+    b6_c2 = _res_conv(128, 1, 0, bn=True) (b6_u1)
 
     # block 7:
-    b7_u1 = up(32, bn=True) (b6_c2)
-    b7_c2 = _res_conv(32, 1, 0, bn=True) (b7_u1)
+    b7_u1 = up(64, bn=True) (b6_c2)
+    b7_c2 = _res_conv(64, 1, 0, bn=True) (b7_u1)
+    
+    # block 8:
+    b8_u1 = up(32, bn=True) (b7_c2)
+    b8_c2 = _res_conv(32, 1, 0, bn=True) (b8_u1)
 
-    outputs = Conv2D(c, (1, 1), padding='valid', activation='tanh') (b7_c2)
+    outputs = Conv2D(c, (1, 1), padding='valid', activation='tanh') (b8_c2)
 
     model = Model([inputs_], [outputs])
     return model
