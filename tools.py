@@ -55,7 +55,7 @@ class data_generator(Sequence):
         for n, imgp in enumerate(self.imgs[l_bound:r_bound]):
             img = imread(str(imgp), as_grey=(self.c==1))
             if img.shape[0]!=self.h or img.shape[1]!=self.w:
-                img = resize(img, (h, w), order=2, preserve_range=True)
+                img = resize(img, (self.h, self.w), order=2, preserve_range=True)
             if img.ndim==2:
                 img = np.expand_dims(img, -1)
             if self.c == 3:

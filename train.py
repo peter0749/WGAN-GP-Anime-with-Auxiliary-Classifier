@@ -24,7 +24,7 @@ from keras.datasets import mnist
 from keras.callbacks import Callback
 from skimage.io import imsave
 
-w, h, c = 96, 96, 3
+w, h, c = 64, 64, 3
 BS = args.batch_size
 EPOCHS = args.epochs
 vae, encoder, decoder = build_inception_residual_vae(h=h, w=w, c=c, latent_dim=2, epsilon_std=args.std, dropout_rate=0.2)
@@ -34,6 +34,6 @@ train_generator = data_generator('./anime-faces', height=h, width=w, batch_size=
 if not os.path.exists('./preview'):
     os.makedirs('./preview')
 
-vae.fit_generator(train_generator, epochs=EPOCHS, shuffle=True, workers=3, callbacks=[Preview(decoder, './preview', h, w, std=args.std)])
+vae.fit_generator(train_generator, epochs=EPOCHS, shuffle=True, workers=10, use_multiprocessing=True, callbacks=[Preview(decoder, './preview', h, w, std=args.std)])
 decoder.save('./decoder.h5')
 encoder.save('./encoder.h5')
