@@ -11,7 +11,13 @@ args = parser.parse_args()
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
+import tensorflow as tf
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+session = tf.Session(config=config)
 import keras
+from keras import backend as K
+K.set_session(session)
 from keras.models import *
 from tools import *
 from vae_model import build_inception_residual_vae, build_vae_gan
@@ -24,7 +30,7 @@ from tqdm import tqdm
 BS = args.batch_size
 EPOCHS = args.epochs
 w, h, c = 32, 32, 1
-generator_model, discriminator_model, vae_model, encoder, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=2, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2)
+generator_model, discriminator_model, vae_model, encoder, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=2, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, compile_vae=True)
 (x_train, _), (___, __) = mnist.load_data()
 x_train = (np.pad(x_train, [(0,0), (2,2), (2,2)], 'constant')[...,np.newaxis] - 127.5) / 127.5
 

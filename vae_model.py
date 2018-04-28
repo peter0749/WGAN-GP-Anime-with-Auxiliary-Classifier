@@ -220,7 +220,7 @@ def build_inception_residual_vae(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.
 
     return vae, encoder_model, decoder_model
 
-def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate=0.1, GRADIENT_PENALTY_WEIGHT=10, batch_size=8):
+def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate=0.1, GRADIENT_PENALTY_WEIGHT=10, batch_size=8, compile_vae=False):
     
     vae_input = Input(shape=(h,w,c))
 
@@ -250,7 +250,8 @@ def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate
     
     # We use the Adam paramaters from Gulrajani et al.
     generator_model.compile(optimizer=Adam(0.0001, beta_1=0.5, beta_2=0.9), loss=None)
-    vae_model.compile(optimizer=Adam(0.0001, beta_1=0.5, beta_2=0.9), loss=None)
+    if compile_vae:
+        vae_model.compile(optimizer=Adam(0.0001, beta_1=0.5, beta_2=0.9), loss=None)
 
     # Now that the generator_model is compiled, we can make the discriminator layers trainable.
     for layer in discriminator.layers:

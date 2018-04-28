@@ -10,7 +10,13 @@ args = parser.parse_args()
 
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+session = tf.Session(config=config)
 import keras
+from keras import backend as K
+K.set_session(session)
 from keras.models import *
 from tools import *
 from vae_model import build_inception_residual_vae

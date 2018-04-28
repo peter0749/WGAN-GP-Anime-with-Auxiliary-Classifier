@@ -11,7 +11,13 @@ args = parser.parse_args()
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
+import tensorflow as tf
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+session = tf.Session(config=config)
 import keras
+from keras import backend as K
+K.set_session(session)
 from keras.models import *
 from tools import *
 from vae_model import build_inception_residual_vae, build_vae_gan
@@ -23,7 +29,7 @@ from tqdm import tqdm
 BS = args.batch_size
 EPOCHS = args.epochs
 w, h, c = 96, 96, 3
-generator_model, discriminator_model, vae_model, encoder, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=2, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2)
+generator_model, discriminator_model, vae_model, encoder, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=2, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, compile_vae=True)
 
 train_generator = data_generator('./anime-faces', height=h, width=w, channel=c, batch_size=BS, shuffle=True)
 
