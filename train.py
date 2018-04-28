@@ -24,7 +24,7 @@ from keras.datasets import mnist
 from keras.callbacks import Callback
 from skimage.io import imsave
 
-w, h, c = 64, 64, 3
+w, h, c = 48, 48, 3
 BS = args.batch_size
 EPOCHS = args.epochs
 vae, encoder, decoder = build_inception_residual_vae(h=h, w=w, c=c, latent_dim=2, epsilon_std=args.std, dropout_rate=0.2)
