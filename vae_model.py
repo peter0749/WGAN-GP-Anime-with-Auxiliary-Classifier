@@ -3,7 +3,7 @@ import keras
 from keras.models import Model
 from keras.layers.merge import _Merge
 from keras.optimizers import Adam
-from keras.layers import Input, Add, Activation, Dense, Reshape, Flatten, LeakyReLU, GlobalAveragePooling2D
+from keras.layers import Input, Add, Activation, Dense, Reshape, Flatten, LeakyReLU, GlobalAveragePooling2D, BatchNormalization
 from keras.layers.core import Dropout, Lambda
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
 from keras.layers.merge import concatenate
@@ -99,7 +99,7 @@ def _incept_conv(f, stride=1, chs=[0.15, 0.6, 0.25]):
         return output
     return block
 
-def _res_conv(f, stride=1, dropout=0.1): # very simple residual module
+def _res_conv(f, stride=1, dropout=0.1, bn=False): # very simple residual module
     def block(inputs):
         channels = int(inputs.shape[-1])
         cs = _incept_conv(f, stride=stride) (inputs)
@@ -110,6 +110,8 @@ def _res_conv(f, stride=1, dropout=0.1): # very simple residual module
             t1 = inputs
 
         out = Add()([t1, cs]) # t1 + c2
+        if bn:
+            out = BatchNormalization() (out)
         out = LeakyReLU(0.1) (out)
         if dropout>0:
             out = Dropout(dropout) (out)
@@ -131,14 +133,14 @@ def inception_residual_discriminator(h=128, w=128, c=3, dropout_rate=0.1):
 
     # block 1:
     b1_c1 = _res_conv(32, 1, dropout_rate) (inputs)
-    b1_c2 = _res_conv(32, 2, dropout_rate) (b1_c1)
+    b1_c2 = _res_conv(32, 2, dropout_rate, bn=True) (b1_c1)
 
     # block 2:
-    b2_c1 = _res_conv(64, 1, dropout_rate) (b1_c2)
-    b2_c2 = _res_conv(64, 2, dropout_rate) (b2_c1)
+    b2_c1 = _res_conv(64, 1, dropout_rate, bn=True) (b1_c2)
+    b2_c2 = _res_conv(64, 2, dropout_rate, bn=True) (b2_c1)
 
     # block 3:
-    b3_c1 = _res_conv(128, 1, dropout_rate) (b2_c2)
+    b3_c1 = _res_conv(128, 1, dropout_rate, bn=True) (b2_c2)
     b3_c2 = _res_conv(128, 2, dropout_rate) (b3_c1)
     
     hidden = GlobalAveragePooling2D() (b3_c2)
@@ -152,14 +154,14 @@ def inception_residual_encoder(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0,
 
     # block 1:
     b1_c1 = _res_conv(32, 1, dropout_rate) (inputs)
-    b1_c2 = _res_conv(32, 2, dropout_rate) (b1_c1)
+    b1_c2 = _res_conv(32, 2, dropout_rate, bn=True) (b1_c1)
 
     # block 2:
-    b2_c1 = _res_conv(64, 1, dropout_rate) (b1_c2)
-    b2_c2 = _res_conv(64, 2, dropout_rate) (b2_c1)
+    b2_c1 = _res_conv(64, 1, dropout_rate, bn=True) (b1_c2)
+    b2_c2 = _res_conv(64, 2, dropout_rate, bn=True) (b2_c1)
 
     # block 3:
-    b3_c1 = _res_conv(128, 1, dropout_rate) (b2_c2)
+    b3_c1 = _res_conv(128, 1, dropout_rate, bn=True) (b2_c2)
     b3_c2 = _res_conv(128, 2, dropout_rate) (b3_c1)
     
     hidden = GlobalAveragePooling2D() (b3_c2)
@@ -179,21 +181,21 @@ def inception_residual_decoder(original_dim, c=3, latent_dim=2, dropout_rate=0.1
     reshape = Reshape(list(map(int, original_dim))) (transform)
 
     # block 4:
-    b4_c1 = _res_conv(256, 1, dropout_rate) (reshape)
+    b4_c1 = _res_conv(256, 1, dropout_rate, bn=True) (reshape)
 
     # block 5:
     b5_u1 = up() (b4_c1)
-    b5_c1 = _res_conv(128, 1, dropout_rate) (b5_u1)
-    b5_c2 = _res_conv(128, 1, dropout_rate) (b5_c1)
+    b5_c1 = _res_conv(128, 1, dropout_rate, bn=True) (b5_u1)
+    b5_c2 = _res_conv(128, 1, dropout_rate, bn=True) (b5_c1)
 
     # block 6:
     b6_u1 = up() (b5_c2)
-    b6_c1 = _res_conv(64, 1, dropout_rate) (b6_u1)
-    b6_c2 = _res_conv(64, 1, dropout_rate) (b6_c1)
+    b6_c1 = _res_conv(64, 1, dropout_rate, bn=True) (b6_u1)
+    b6_c2 = _res_conv(64, 1, dropout_rate, bn=True) (b6_c1)
 
     # block 7:
     b7_u1 = up() (b6_c2)
-    b7_c1 = _res_conv(32, 1, dropout_rate) (b7_u1)
+    b7_c1 = _res_conv(32, 1, dropout_rate, bn=True) (b7_u1)
     b7_c2 = _res_conv(32, 1, dropout_rate) (b7_c1)
 
     outputs = Conv2D(c, (1, 1), padding='valid', activation='tanh') (b7_c2)
@@ -210,8 +212,8 @@ def build_inception_residual_vae(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.
     decoder_model = inception_residual_decoder(shape[1:], c=c, latent_dim=latent_dim, dropout_rate=dropout_rate)
     outputs = decoder_model(z)
     
-    bce_loss = 0.5 * K.sum(K.square(images - outputs), axis=-1) / (2*(epsilon_std**2)) + np.log(epsilon_std) # gaussian_log_likelihood
-    kl_loss = K.mean(-0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)) # KL-divergence
+    bce_loss = K.mean( 0.5 * K.sum(K.square(images - outputs), axis=-1) / (2*(epsilon_std**2)) + np.log(epsilon_std)) # gaussian_log_likelihood
+    kl_loss =  K.mean(-0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)) # KL-divergence
 
     vae = Model([images], [outputs])
     vae.add_loss(bce_loss) # add reconstruction loss (gaussian_log_likelihood) to decoder(generator)

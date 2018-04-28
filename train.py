@@ -29,8 +29,7 @@ BS = args.batch_size
 EPOCHS = args.epochs
 vae, encoder, decoder = build_inception_residual_vae(h=h, w=w, c=c, latent_dim=2, epsilon_std=args.std, dropout_rate=0.2)
 
-# train_generator = data_generator('./anime-faces', height=h, width=w, batch_size=BS, shuffle=True)
-train_generator = data_generator('./f', height=h, width=w, batch_size=BS, shuffle=True)
+train_generator = data_generator('./anime-faces', height=h, width=w, batch_size=BS, shuffle=True)
 
 if not os.path.exists('./preview'):
     os.makedirs('./preview')

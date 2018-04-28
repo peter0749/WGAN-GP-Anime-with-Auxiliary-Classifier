@@ -7,6 +7,27 @@ from keras.callbacks import Callback
 from skimage.io import imsave
 from skimage.transform import resize
 from skimage.color import gray2rgb
+from keras.datasets import mnist
+
+class mnist_generator(Sequence):
+    def __init__(self, images, height=32, width=32, batch_size=8):
+        self.bs = batch_size
+        self.imgs = images
+        self.h = height
+        self.w = width
+    def __len__(self):
+        return int(np.ceil(float(len(self.imgs))/self.bs))
+    def __getitem__(self, idx):
+        l_bound = idx     * self.bs
+        r_bound = (idx+1) * self.bs
+        if r_bound > len(self.imgs):
+            r_bound = len(self.imgs)
+            l_bound = r_bound - self.bs
+        x_batch = np.zeros((r_bound - l_bound, self.h, self.w, 1))
+        for n, img in enumerate(self.imgs[l_bound:r_bound]):
+            img = resize(np.squeeze(img), (self.h, self.w), order=2, preserve_range=True)[...,np.newaxis]
+            x_batch[n] = np.clip((img.astype(np.float32)-127.5) / 127.5, -1, 1)
+        return x_batch, None
 
 class data_generator(Sequence):
     def __init__(self, images_path, height=128, width=128, channel=3, batch_size=8, shuffle=True):

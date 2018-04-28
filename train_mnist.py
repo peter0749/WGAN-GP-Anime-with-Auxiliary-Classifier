@@ -8,6 +8,7 @@ import keras
 from keras import backend as K
 K.set_session(session)
 from keras.models import *
+from keras.preprocessing.image import ImageDataGenerator
 from tools import *
 from vae_model import build_inception_residual_vae
 from keras.datasets import mnist
@@ -15,18 +16,18 @@ from keras.callbacks import Callback
 from skimage.io import imsave
 
 w, h, c = 32, 32, 1
-BS = 20
+BS = 60
 EPOCHS = 10
 
 vae, encoder, decoder = build_inception_residual_vae(h=h, w=w, c=c, latent_dim=2, epsilon_std=1., dropout_rate=0.2)
 
 (x_train, _), (x_test, __) = mnist.load_data()
-x_train = (np.pad(x_train, [(0,0), (2,2), (2,2)], 'constant')[...,np.newaxis] - 127.5) / 127.5
-x_test = (np.pad(x_test, [(0,0), (2,2), (2,2)], 'constant')[...,np.newaxis] - 127.5) / 127.5
+train_generator = mnist_generator(x_train, w, h, BS)
+valid_generator = mnist_generator(x_test,  w, h, BS)
 
 if not os.path.exists('./mnist_preview'):
     os.makedirs('./mnist_preview')
 
-vae.fit(x_train, None, validation_data=(x_test, None), batch_size=BS, epochs=EPOCHS, shuffle=True, callbacks=[Preview(decoder, './mnist_preview', h, w, std=1.)])
+vae.fit_generator(train_generator, validation_data=valid_generator, epochs=EPOCHS, shuffle=True, callbacks=[Preview(decoder, './mnist_preview', h, w, std=1., batch_size=BS)], workers=3)
 decoder.save('./mnist_decoder.h5')
 encoder.save('./mnist_encoder.h5')
