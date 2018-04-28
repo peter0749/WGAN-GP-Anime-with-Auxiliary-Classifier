@@ -33,7 +33,7 @@ w, h, c = 32, 32, 1
 generator_model, discriminator_model, vae_model, encoder, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=2, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, compile_vae=False)
 del vae_model
 (x_train, _), (___, __) = mnist.load_data()
-x_train = (np.array(list(map(lambda x: resize(x, (h,w), order=2, preserve_range=True), x_train)), dtype=np.float32)[...,np.newaxis] - 127.5) / 127.5
+x_train = (np.array(list(map(lambda x: resize(x, (h,w), order=1, preserve_range=True), x_train)), dtype=np.float32)[...,np.newaxis] - 127.5) / 127.5
 
 if not os.path.exists('./preview'):
     os.makedirs('./preview')
