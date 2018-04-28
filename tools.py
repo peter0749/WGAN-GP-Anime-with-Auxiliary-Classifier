@@ -25,7 +25,7 @@ class mnist_generator(Sequence):
             l_bound = r_bound - self.bs
         x_batch = np.zeros((r_bound - l_bound, self.h, self.w, 1))
         for n, img in enumerate(self.imgs[l_bound:r_bound]):
-            img = resize(np.squeeze(img), (self.h, self.w), order=2, preserve_range=True)[...,np.newaxis]
+            img = resize(np.squeeze(img), (self.h, self.w), order=1, preserve_range=True)[...,np.newaxis]
             x_batch[n] = np.clip((img.astype(np.float32)-127.5) / 127.5, -1, 1)
         return x_batch, None
 
