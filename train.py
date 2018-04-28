@@ -34,6 +34,6 @@ train_generator = data_generator('./anime-faces', height=h, width=w, batch_size=
 if not os.path.exists('./preview'):
     os.makedirs('./preview')
 
-vae.fit_generator(train_generator, epochs=EPOCHS, shuffle=True, workers=10, use_multiprocessing=True, callbacks=[Preview(decoder, './preview', h, w, std=args.std)])
+vae.fit_generator(train_generator, epochs=EPOCHS, shuffle=True, workers=3, callbacks=[Preview(decoder, './preview', h, w, std=args.std)])
 decoder.save('./decoder.h5')
 encoder.save('./encoder.h5')
