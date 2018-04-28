@@ -9,6 +9,7 @@ import keras
 from keras import backend as K
 K.set_session(session)
 from keras.models import *
+from pixel_shuffler import PixelShuffler
 from vae_model import build_inception_residual_vae
 from skimage.io import imsave
 import argparse
@@ -32,6 +33,6 @@ parser.add_argument('--threshold', type=float, default=0.5, required=False,
 args = parser.parse_args()
 x, y = args.x, args.y
 
-model = load_model(args.model, custom_objects={'up_lambda':up_lambda})
+model = load_model(args.model, custom_objects={'PixelShuffler':PixelShuffler})
 m = (np.squeeze(model.predict(np.array([[x, y]]), batch_size=1)) * 127.5 + 127.5).astype(np.uint8)
 imsave(args.output, m)
