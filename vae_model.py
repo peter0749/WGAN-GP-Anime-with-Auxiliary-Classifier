@@ -9,6 +9,7 @@ from keras.layers.convolutional import Conv2D, Conv2DTranspose
 from keras.layers.merge import concatenate
 from keras import metrics
 from keras import backend as K
+from pixel_shuffler import PixelShuffler # PixelShuffler layer
 import tensorflow as tf
 from functools import partial
 
@@ -184,17 +185,17 @@ def inception_residual_decoder(original_dim, c=3, latent_dim=2, dropout_rate=0.1
     b4_c1 = _res_conv(256, 1, dropout_rate, bn=True) (reshape)
 
     # block 5:
-    b5_u1 = up() (b4_c1)
+    b5_u1 = PixelShuffler() (b4_c1)
     b5_c1 = _res_conv(128, 1, dropout_rate, bn=True) (b5_u1)
     b5_c2 = _res_conv(128, 1, dropout_rate, bn=True) (b5_c1)
 
     # block 6:
-    b6_u1 = up() (b5_c2)
+    b6_u1 = PixelShuffler() (b5_c2)
     b6_c1 = _res_conv(64, 1, dropout_rate, bn=True) (b6_u1)
     b6_c2 = _res_conv(64, 1, dropout_rate, bn=True) (b6_c1)
 
     # block 7:
-    b7_u1 = up() (b6_c2)
+    b7_u1 = PixelShuffler() (b6_c2)
     b7_c1 = _res_conv(32, 1, dropout_rate, bn=True) (b7_u1)
     b7_c2 = _res_conv(32, 1, dropout_rate) (b7_c1)
 
@@ -296,4 +297,5 @@ def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate
 if __name__ == '__main__':
     vae, encoder, decoder = build_inception_residual_vae(h=32, w=32, c=1, dropout_rate=0.2)
     vae.summary()
-    
+    encoder.summary()
+    decoder.summary()
