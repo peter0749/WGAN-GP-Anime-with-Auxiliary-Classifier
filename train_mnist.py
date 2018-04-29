@@ -10,16 +10,16 @@ K.set_session(session)
 from keras.models import *
 from keras.preprocessing.image import ImageDataGenerator
 from tools import *
-from vae_model import build_inception_residual_vae
+from vae_model import build_residual_vae
 from keras.datasets import mnist
 from keras.callbacks import Callback
 from skimage.io import imsave
 
 w, h, c = 32, 32, 1
-BS = 60
+BS = 16
 EPOCHS = 10
 
-vae, encoder, decoder = build_inception_residual_vae(h=h, w=w, c=c, latent_dim=2, epsilon_std=1., dropout_rate=0.2)
+vae, encoder, decoder = build_residual_vae(h=h, w=w, c=c, latent_dim=2, epsilon_std=1., dropout_rate=0.2)
 
 (x_train, _), (x_test, __) = mnist.load_data()
 train_generator = mnist_generator(x_train, w, h, BS)

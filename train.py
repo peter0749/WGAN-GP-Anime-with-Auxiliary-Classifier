@@ -19,7 +19,7 @@ from keras import backend as K
 K.set_session(session)
 from keras.models import *
 from tools import *
-from vae_model import build_inception_residual_vae
+from vae_model import build_residual_vae
 from keras.datasets import mnist
 from keras.callbacks import Callback
 from skimage.io import imsave
@@ -27,7 +27,7 @@ from skimage.io import imsave
 w, h, c = 48, 48, 3
 BS = args.batch_size
 EPOCHS = args.epochs
-vae, encoder, decoder = build_inception_residual_vae(h=h, w=w, c=c, latent_dim=2, epsilon_std=args.std, dropout_rate=0.2)
+vae, encoder, decoder = build_residual_vae(h=h, w=w, c=c, latent_dim=2, epsilon_std=args.std, dropout_rate=0.2)
 
 train_generator = data_generator('./anime-faces', height=h, width=w, batch_size=BS, shuffle=True)
 

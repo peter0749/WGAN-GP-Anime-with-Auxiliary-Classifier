@@ -10,7 +10,7 @@ from keras import backend as K
 K.set_session(session)
 from keras.models import *
 from pixel_shuffler import PixelShuffler
-from vae_model import build_inception_residual_vae
+from vae_model import build_residual_vae
 from skimage.io import imsave
 import argparse
 

@@ -80,14 +80,13 @@ class data_generator(Sequence):
             x_batch[n] = np.clip((img.astype(np.float32)-127.5) / 127.5, -1, 1)
         return x_batch, None
 
-def generate_images(generator, path, h, w, c, std, nr, nc, epoch, batch_size=1):
-    grid_x = np.linspace(-15, 15, nc)
-    grid_y = np.linspace(-15, 15, nr)
+def generate_images(generator, path, h, w, c, latent_dim, std, nr, nc, epoch, batch_size=1):
+    noise = np.random.normal(0, std, (nr*nc, latent_dim))
+    generated = generator.predict(noise, batch_size=batch_size, verbose=0)
     figure = np.zeros((h * nr, w * nc, c))
-    for ri, y in enumerate(grid_y):
-        for ci, x in enumerate(grid_x):
-            z_sample = np.array([[x, y]]) * std
-            figure[h*ri:h*(ri+1), w*ci:w*(ci+1)] = generator.predict(z_sample, batch_size=1, verbose=0)[0]
+    for ri in range(nr):
+        for ci in range(nc):
+            figure[h*ri:h*(ri+1), w*ci:w*(ci+1)] = generated[ri*nc+ci]
     figure = np.squeeze(np.clip(figure * 127.5 + 127.5, 0, 255).astype(np.uint8))
     imsave(os.path.join(path, 'epoch_{:02d}.jpg'.format(epoch)), figure)
     generator.save(os.path.join(path, 'weights_{:02d}.h5'.format(epoch)))
