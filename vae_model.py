@@ -12,7 +12,44 @@ from keras import metrics
 from keras import backend as K
 from pixel_shuffler import PixelShuffler # PixelShuffler layer
 import tensorflow as tf
-from functools import partial
+
+def RandomWeightedAverage():
+    def block(input_list):
+        input1, input2 = input_list
+        weights = K.random_uniform((K.shape(input1)[0], 1, 1, 1))
+        return (weights * input1) + ((1 - weights) * input2)
+    return Lambda(block)
+
+def gradient_penalty_loss(y_pred, averaged_samples, gradient_penalty_weight):
+    """Calculates the gradient penalty loss for a batch of "averaged" samples.
+    In Improved WGANs, the 1-Lipschitz constraint is enforced by adding a term to the loss function
+    that penalizes the network if the gradient norm moves away from 1. However, it is impossible to evaluate
+    this function at all points in the input space. The compromise used in the paper is to choose random points
+    on the lines between real and generated samples, and check the gradients at these points. Note that it is the
+    gradient w.r.t. the input averaged samples, not the weights of the discriminator, that we're penalizing!
+    In order to evaluate the gradients, we must first run samples through the generator and evaluate the loss.
+    Then we get the gradients of the discriminator w.r.t. the input averaged samples.
+    The l2 norm and penalty can then be calculated for this gradient.
+    Note that this loss function requires the original averaged samples as input, but Keras only supports passing
+    y_true and y_pred to loss functions. To get around this, we make a partial() of the function with the
+    averaged_samples argument, and use that for model training."""
+    # first get the gradients:
+    #   assuming: - that y_pred has dimensions (batch_size, 1)
+    #             - averaged_samples has dimensions (batch_size, nbr_features)
+    # gradients afterwards has dimension (batch_size, nbr_features), basically
+    # a list of nbr_features-dimensional gradient vectors
+    gradients = K.gradients(y_pred, averaged_samples)[0]
+    # compute the euclidean norm by squaring ...
+    gradients_sqr = K.square(gradients)
+    #   ... summing over the rows ...
+    gradients_sqr_sum = K.sum(gradients_sqr,
+                              axis=np.arange(1, len(gradients_sqr.shape)))
+    #   ... and sqrt
+    gradient_l2_norm = K.sqrt(gradients_sqr_sum)
+    # compute lambda * (1 - ||grad||)^2 still for each single sample
+    gradient_penalty = gradient_penalty_weight * K.square(1 - gradient_l2_norm)
+    # return the mean as loss over all the batch samples
+    return K.mean(gradient_penalty)
 
 def sampling(args, latent_dim=2, epsilon_std=1.0):
     z_mean, z_log_var = args
@@ -72,6 +109,10 @@ def residual_discriminator(h=128, w=128, c=3, dropout_rate=0.1):
     x = _res_conv(256, 1, dropout_rate, True) (x) # 256
     
     hidden = Flatten() (x)
+    #hidden = Dense(1024, kernel_initializer='he_normal', kernel_regularizer=l2(0.001)) (hidden)
+    #hidden = BatchNormalization() (hidden)
+    #hidden = LeakyReLU(0.2) (hidden)
+    
     dis = Dense(1, kernel_initializer='he_normal', kernel_regularizer=l2(0.001)) (hidden) # We don't need 'sigmoid' here!!
     model = Model([inputs], [dis])
     return model
@@ -104,6 +145,9 @@ def residual_encoder(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_r
     x = _res_conv(256, 1, dropout_rate, True) (x) # 256
     
     hidden = Flatten() (x)
+    #hidden = Dense(1024, kernel_initializer='he_normal', kernel_regularizer=l2(0.001)) (hidden)
+    #hidden = BatchNormalization() (hidden)
+    #hidden = LeakyReLU(0.2) (hidden)
 
     z_mean =    Dense(latent_dim, kernel_regularizer=l2(0.001))(hidden)
     z_log_var = Dense(latent_dim, kernel_regularizer=l2(0.001))(hidden)
@@ -115,7 +159,13 @@ def residual_encoder(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_r
 def residual_decoder(h, w, c=3, latent_dim=2, dropout_rate=0.1):
 
     inputs_ = Input(shape=(latent_dim,))
-    transform = Dense(h*w*128, kernel_regularizer=l2(0.001)) (inputs_)
+    
+    hidden = inputs_
+    #hidden = Dense(1024, kernel_regularizer=l2(0.001)) (hidden)
+    #hidden = BatchNormalization() (hidden)
+    #hidden = LeakyReLU(0.2) (hidden)
+    
+    transform = Dense(h*w*128, kernel_regularizer=l2(0.001)) (hidden)
     transform = BatchNormalization() (transform)
     transform = LeakyReLU(0.2) (transform)
     reshape = Reshape((h,w,128)) (transform)
@@ -186,7 +236,7 @@ def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate
     
     discriminator_layers_for_generator = discriminator(generator_layers)
     generator_model = Model(inputs=[generator_input], outputs=[discriminator_layers_for_generator])
-    generator_model.add_loss(0.5 * K.mean(K.square(discriminator_layers_for_generator - 1)))
+    generator_model.add_loss(K.mean(discriminator_layers_for_generator))
     generator_model.compile(optimizer=optimizer_g, loss=None)
     
     if use_vae:
@@ -196,7 +246,7 @@ def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate
         discriminator_layers_for_vae = discriminator(vae_output)
         vae_model = Model(inputs=[vae_input], outputs=[discriminator_layers_for_vae])
         vae_model.add_loss(kl_loss, inputs=[encoder_model])
-        vae_model.add_loss(0.5 * K.mean(K.square(discriminator_layers_for_vae - 1)))
+        vae_model.add_loss(K.mean(discriminator_layers_for_vae))
         if vae_use_sse:
             vae_model.add_loss(d_loss) # may makes outputs blurry
         vae_model.compile(optimizer=optimizer_g, loss=None)
@@ -219,16 +269,14 @@ def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate
     discriminator_output_from_generator = discriminator(generated_samples_for_discriminator)
     discriminator_output_from_real_samples = discriminator(real_samples)
 
-    discriminator_real = Model([real_samples], [discriminator_output_from_real_samples])
-    discriminator_fake = Model([generator_input_for_discriminator], [discriminator_output_from_generator])
+    averaged_samples = RandomWeightedAverage()([real_samples, generated_samples_for_discriminator])
+    averaged_samples_out = discriminator(averaged_samples)
     
-    discriminator_real.add_loss(0.5 * K.mean(K.square(discriminator_output_from_real_samples - 1)))
-    discriminator_fake.add_loss(0.5 * K.mean(K.square(discriminator_output_from_generator)))
-    
-    discriminator_real.compile(optimizer=optimizer_d, loss=None)
-    discriminator_fake.compile(optimizer=optimizer_d, loss=None)
+    discriminator_model = Model([real_samples, generator_input_for_discriminator], [discriminator_output_from_real_samples, discriminator_output_from_generator, averaged_samples_out])
+    discriminator_model.add_loss(K.mean(discriminator_output_from_real_samples) - K.mean(discriminator_output_from_generator) + gradient_penalty_loss(averaged_samples_out, averaged_samples, 10))
+    discriminator_model.compile(optimizer=optimizer_d, loss=None)
 
-    return (generator_model, discriminator_real, discriminator_fake, vae_model, encoder_model, generator, discriminator) if use_vae else (generator_model, discriminator_real, discriminator_fake, generator, discriminator)
+    return (generator_model, discriminator_model, vae_model, encoder_model, generator, discriminator) if use_vae else (generator_model, discriminator_model, generator, discriminator)
 
 if __name__ == '__main__':
     vae, encoder, decoder = build_residual_vae(h=32, w=32, c=1, dropout_rate=0.2)

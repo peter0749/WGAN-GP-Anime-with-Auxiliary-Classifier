@@ -16,10 +16,11 @@ from keras.callbacks import Callback
 from skimage.io import imsave
 
 w, h, c = 32, 32, 1
+latent_dim = 2
 BS = 16
 EPOCHS = 10
 
-vae, encoder, decoder = build_residual_vae(h=h, w=w, c=c, latent_dim=2, epsilon_std=1., dropout_rate=0.2)
+vae, encoder, decoder = build_residual_vae(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=1., dropout_rate=0.2)
 
 (x_train, _), (x_test, __) = mnist.load_data()
 train_generator = mnist_generator(x_train, w, h, BS)
@@ -28,6 +29,6 @@ valid_generator = mnist_generator(x_test,  w, h, BS)
 if not os.path.exists('./mnist_preview'):
     os.makedirs('./mnist_preview')
 
-vae.fit_generator(train_generator, validation_data=valid_generator, epochs=EPOCHS, shuffle=True, callbacks=[Preview(decoder, './mnist_preview', h, w, std=1., batch_size=BS)], workers=3)
+vae.fit_generator(train_generator, validation_data=valid_generator, epochs=EPOCHS, shuffle=True, callbacks=[Preview(decoder, './mnist_preview', h, w, c, latent_dim, std=args.std, batch_size=BS)], workers=3)
 decoder.save('./mnist_decoder.h5')
 encoder.save('./mnist_encoder.h5')

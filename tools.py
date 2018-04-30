@@ -135,7 +135,7 @@ def generate_images(generator, path, h, w, c, latent_dim, std, nr, nc, epoch, ba
     generator.save(os.path.join(path, 'weights_{:02d}.h5'.format(epoch)))
 
 class Preview(Callback):
-    def __init__(self, decoder, path, h, w, c=3, nr=15, nc=15, std=1.0, batch_size=1, save_weights=True):
+    def __init__(self, decoder, path, h, w, c=3, latent_dim=2, nr=15, nc=15, std=1.0, batch_size=1, save_weights=True):
         self.nr = nr
         self.nc = nc
         self.path = path
@@ -144,10 +144,11 @@ class Preview(Callback):
         self.sv = save_weights
         self.h, self.w, self.c = h, w, c
         self.std = std
+        self.latent_dim = latent_dim
     def on_epoch_end(self, epoch, logs):
         nr, nc = self.nr, self.nc
         h, w, c = self.h, self.w, self.c
         path = self.path
-        generate_images(self.decoder, self.path, self.h, self.w, self.c, self.std, self.nr, self.nc, epoch, self.batch_size)
+        generate_images(self.decoder, self.path, self.h, self.w, self.c, self.latent_dim, self.std, self.nr, self.nc, epoch, self.batch_size)
 
         
