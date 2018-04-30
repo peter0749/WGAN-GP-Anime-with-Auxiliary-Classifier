@@ -40,19 +40,6 @@ def _res_conv(f, stride=1, dropout=0.1, bn=False): # very simple residual module
             out = Dropout(dropout) (out)
         return out
     return block
-    
-
-def up(filters, dropout_rate=0, bn=False):
-    def block(inputs):
-        x = conv(filters * 4, 3, 1) (inputs)
-        if bn:
-            x = BatchNormalization() (x)
-        x = LeakyReLU(0.2) (x)
-        if dropout_rate>0:
-            x = Dropout(dropout_rate) (x)
-        x = PixelShuffler()(x)
-        return x
-    return block
 
 def residual_discriminator(h=128, w=128, c=3, dropout_rate=0.1):
 
@@ -68,7 +55,6 @@ def residual_discriminator(h=128, w=128, c=3, dropout_rate=0.1):
     x = conv(64, 3, 2, pad='same') (x) # 64^2
     x = BatchNormalization() (x)
     x = LeakyReLU(0.2) (x)
-    x = Dropout(dropout_rate) (x)
     x = _res_conv(64, 1, dropout_rate, True) (x)
     
     p = x
@@ -77,7 +63,6 @@ def residual_discriminator(h=128, w=128, c=3, dropout_rate=0.1):
     x = conv(128, 3, 2) (p) # 128^2
     x = BatchNormalization() (x)
     x = LeakyReLU(0.2) (x)
-    x = Dropout(dropout_rate) (x)
     x = _res_conv(128, 1, dropout_rate, True) (x)
     
     # block 4:
@@ -102,7 +87,6 @@ def residual_encoder(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_r
     x = conv(64, 3, 2, pad='same') (x) # 64^2
     x = BatchNormalization() (x)
     x = LeakyReLU(0.2) (x)
-    x = Dropout(dropout_rate) (x)
     x = _res_conv(64, 1, dropout_rate, True) (x)
     
     p = x
@@ -111,7 +95,6 @@ def residual_encoder(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_r
     x = conv(128, 3, 2) (p) # 128^2
     x = BatchNormalization() (x)
     x = LeakyReLU(0.2) (x)
-    x = Dropout(dropout_rate) (x)
     x = _res_conv(128, 1, dropout_rate, True) (x)
     
     # block 4:
@@ -134,12 +117,28 @@ def residual_decoder(h, w, c=3, latent_dim=2, dropout_rate=0.1):
     transform = LeakyReLU(0.2) (transform)
     reshape = Reshape((h,w,128)) (transform)
 
-    up1 = up(128, dropout_rate, bn=True) (reshape) # 128^2
-    cv1 = _res_conv(128, 1, dropout_rate, True) (up1) 
-    up2 = up(64,  dropout_rate, bn=True) (up1) # 64^2
-    cv2 = _res_conv(64, 1, dropout_rate, True) (up2)
-    cv3 = _res_conv(32, 1, dropout_rate, True) (cv2) # 32
-    outputs = Conv2D(c, (1, 1), padding='valid', activation='tanh') (cv3)
+    x = reshape
+    
+    x = conv(128, 3, 1, pad='same') (x) # 12x12@128
+    x = BatchNormalization() (x)
+    x = LeakyReLU(0.2) (x)
+    x = Dropout(dropout_rate) (x)
+    
+    x = PixelShuffler()(x) # 24x24@32
+    
+    x = conv(32, 3, 1, pad='same') (x) # 24x24@32
+    x = BatchNormalization() (x)
+    x = LeakyReLU(0.2) (x)
+    x = _res_conv(32, 1, dropout_rate, True) (x)
+    
+    x = PixelShuffler()(x) # 48x48@8
+    
+    x = conv(8, 3, 1, pad='same') (x) # 48x48@8
+    x = BatchNormalization() (x)
+    x = LeakyReLU(0.2) (x)
+    x = _res_conv(8, 1, dropout_rate, True) (x)
+    
+    outputs = Conv2D(c, (1, 1), padding='valid', activation='tanh') (x)
 
     model = Model([inputs_], [outputs])
     return model
