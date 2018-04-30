@@ -49,6 +49,7 @@ for epoch in range(EPOCHS):
             r_bound = min(len(x_train), i+BS)
             l_bound = r_bound - BS
             image_batch = x_train[l_bound:r_bound]
+            image_batch = (image_batch.astype(np.float32)-127.5) / 127.5
             noise = np.random.normal(0, args.std, (BS, latent_dim)).astype(np.float32)
             msg = ''
             msg += 'DL_R: {:.2f}, '.format(np.mean(discriminator_real.train_on_batch(image_batch, None)))
