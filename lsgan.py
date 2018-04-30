@@ -33,7 +33,8 @@ w, h, c = 48, 48, 3
 latent_dim = 1000
 generator_model, discriminator_real, discriminator_fake, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, use_vae=False)
 
-x_train = get_all_data('./anime-faces', height=h, width=w)
+x_train = get_all_data('./anime-faces', height=h, width=w) # dtype: np.uint8
+seq = get_imgaug()
 
 if not os.path.exists('./preview'):
     os.makedirs('./preview')
@@ -46,6 +47,8 @@ for epoch in range(EPOCHS):
             r_bound = min(len(x_train), i+BS)
             l_bound = r_bound - BS
             image_batch = x_train[l_bound:r_bound]
+            image_batch = seq.augment_images(image_batch)
+            image_batch = (image_batch.astype(np.float32) - 127.5) / 127.5
             noise = np.random.normal(0, args.std, (BS, latent_dim)).astype(np.float32)
             msg = ''
             msg += 'DL_R: {:.2f}, '.format(np.mean(discriminator_real.train_on_batch(image_batch, None)))

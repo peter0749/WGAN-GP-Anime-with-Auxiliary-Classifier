@@ -9,6 +9,49 @@ from skimage.transform import resize
 from skimage.color import gray2rgb
 from keras.datasets import mnist
 
+import imgaug as ia
+from imgaug import augmenters as iaa
+import numpy as np
+
+def get_imgaug():
+    # Sometimes(0.5, ...) applies the given augmenter in 50% of all cases,
+    # e.g. Sometimes(0.5, GaussianBlur(0.3)) would blur roughly every second image.
+    sometimes = lambda aug: iaa.Sometimes(0.5, aug)
+    
+    # Define our sequence of augmentation steps that will be applied to every image
+    # All augmenters with per_channel=0.5 will sample one value _per image_
+    # in 50% of all cases. In all other cases they will sample new values
+    # _per channel_.
+    seq = iaa.Sequential(
+        [
+            # apply the following augmenters to most images
+            iaa.Fliplr(0.5), # horizontally flip 50% of all images
+            sometimes(iaa.Affine(
+                scale={"x": (0.9, 1.1), "y": (0.9, 1.1)}, # scale images to 80-120% of their size, individually per axis
+                translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)}, # translate by -20 to +20 percent (per axis)
+                rotate=(-3, 3), # rotate by -45 to +45 degrees
+                shear=(-3, 3), # shear by -16 to +16 degrees
+                order=[0, 1], # use nearest neighbour or bilinear interpolation (fast)
+                cval=(0, 255), # if mode is constant, use a cval between 0 and 255
+                mode='constant' # use any of scikit-image's warping modes (see 2nd image from the top for examples)
+            )),
+            # execute 0 to 5 of the following (less important) augmenters per image
+            # don't execute all of them, as that would often be way too strong
+            iaa.SomeOf((0, 2),
+                [
+                    iaa.Add((-5, 5), per_channel=0.5), # change brightness of images (by -10 to 10 of original value)
+                    iaa.AddToHueAndSaturation((-5, 5)), # change hue and saturation
+                    # either change the brightness of the whole image (sometimes
+                    # per channel) or change the brightness of subareas
+                    iaa.Multiply((0.5, 1.5), per_channel=0.5)
+                ],
+                random_order=True
+            )
+        ],
+        random_order=True
+    )
+    return seq
+
 class mnist_generator(Sequence):
     def __init__(self, images, height=32, width=32, batch_size=8):
         self.bs = batch_size
@@ -37,10 +80,10 @@ def get_all_data(images_path, height=128, width=128):
         if img.ndim==2:
             img = gray2rgb(img)
         if img.shape[0]!=height or img.shape[1]!=width:
-            order = 2 if img.shape[0]<height or img.shape[1]<width else 0
+            order = 2 if img.shape[0]<height or img.shape[1]<width else 0 # reduce artifact
             img = resize(img, (height, width), order=order, preserve_range=True)
-        return img
-    images = (np.array([ read_img(imgp) for imgp in img_path_list], dtype=np.float32) - 127.5) / 127.5
+        return img[...,:3] # discard alpha channel (if exist)
+    images = np.asarray([ read_img(imgp) for imgp in img_path_list], dtype=np.uint8) # save memory space
     return images
     
 
@@ -106,3 +149,5 @@ class Preview(Callback):
         h, w, c = self.h, self.w, self.c
         path = self.path
         generate_images(self.decoder, self.path, self.h, self.w, self.c, self.std, self.nr, self.nc, epoch, self.batch_size)
+
+        

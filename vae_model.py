@@ -1,12 +1,13 @@
 import numpy as np
 import keras
 from keras.models import Model
-from keras.optimizers import Adam, RMSprop
+from keras.optimizers import Adam, SGD, RMSprop
 from keras.layers.merge import _Merge
-from keras.layers import Input, Add, Activation, Dense, Reshape, Flatten, GlobalAveragePooling2D, BatchNormalization, LeakyReLU
+from keras.layers import Input, Add, Activation, Dense, Reshape, Flatten, GlobalAveragePooling2D, BatchNormalization, LeakyReLU, GaussianNoise
 from keras.layers.core import Dropout, Lambda
 from keras.layers.convolutional import Conv2D, Conv2DTranspose, UpSampling2D, ZeroPadding2D
 from keras.layers.merge import concatenate
+from keras.regularizers import l2
 from keras import metrics
 from keras import backend as K
 from pixel_shuffler import PixelShuffler # PixelShuffler layer
@@ -44,9 +45,11 @@ def _res_conv(f, stride=1, dropout=0.1, bn=False): # very simple residual module
 def residual_discriminator(h=128, w=128, c=3, dropout_rate=0.1):
 
     inputs = Input(shape=(h,w,c))
+    
+    gaussian_noise = GaussianNoise(0.001) (inputs)
 
     # block 1:
-    x = conv(32, 3, 2, pad='same') (inputs) # 32
+    x = conv(32, 3, 2, pad='same') (gaussian_noise) # 32
     x = BatchNormalization() (x)
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
@@ -69,7 +72,7 @@ def residual_discriminator(h=128, w=128, c=3, dropout_rate=0.1):
     x = _res_conv(256, 1, dropout_rate, True) (x) # 256
     
     hidden = Flatten() (x)
-    dis = Dense(1, kernel_initializer='he_normal') (hidden) # We don't need 'sigmoid' here!!
+    dis = Dense(1, kernel_initializer='he_normal', kernel_regularizer=l2(0.001)) (hidden) # We don't need 'sigmoid' here!!
     model = Model([inputs], [dis])
     return model
 
@@ -102,8 +105,8 @@ def residual_encoder(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_r
     
     hidden = Flatten() (x)
 
-    z_mean =    Dense(latent_dim)(hidden)
-    z_log_var = Dense(latent_dim)(hidden)
+    z_mean =    Dense(latent_dim, kernel_regularizer=l2(0.001))(hidden)
+    z_log_var = Dense(latent_dim, kernel_regularizer=l2(0.001))(hidden)
 
     z = Lambda(sampling, output_shape=(latent_dim,), arguments={'latent_dim':latent_dim, 'epsilon_std':epsilon_std}) ([z_mean, z_log_var])
     model = Model([inputs], [z, z_mean, z_log_var])
@@ -112,7 +115,7 @@ def residual_encoder(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_r
 def residual_decoder(h, w, c=3, latent_dim=2, dropout_rate=0.1):
 
     inputs_ = Input(shape=(latent_dim,))
-    transform = Dense(h*w*128) (inputs_)
+    transform = Dense(h*w*128, kernel_regularizer=l2(0.001)) (inputs_)
     transform = BatchNormalization() (transform)
     transform = LeakyReLU(0.2) (transform)
     reshape = Reshape((h,w,128)) (transform)
@@ -165,7 +168,8 @@ def build_residual_vae(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout
 
 def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate=0.1, GRADIENT_PENALTY_WEIGHT=10, batch_size=8, use_vae=False, vae_use_sse=True):
     
-    optimizer = Adam(0.0002, 0.5)
+    optimizer_g = Adam(0.0005, 0.5, decay=1e-6)
+    optimizer_d = Adam(0.0001, 0.5)
     
     vae_input = Input(shape=(h,w,c))
     encoder_model, t_h, t_w = residual_encoder(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=epsilon_std, dropout_rate=dropout_rate)
@@ -182,8 +186,8 @@ def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate
     
     discriminator_layers_for_generator = discriminator(generator_layers)
     generator_model = Model(inputs=[generator_input], outputs=[discriminator_layers_for_generator])
-    generator_model.add_loss(0.5 * K.mean(K.square(discriminator_layers_for_generator - 0.99)))
-    generator_model.compile(optimizer=optimizer, loss=None)
+    generator_model.add_loss(0.5 * K.mean(K.square(discriminator_layers_for_generator - 1)))
+    generator_model.compile(optimizer=optimizer_g, loss=None)
     
     if use_vae:
         vae_output = generator(z)
@@ -192,10 +196,10 @@ def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate
         discriminator_layers_for_vae = discriminator(vae_output)
         vae_model = Model(inputs=[vae_input], outputs=[discriminator_layers_for_vae])
         vae_model.add_loss(kl_loss, inputs=[encoder_model])
-        vae_model.add_loss(0.5 * K.mean(K.square(discriminator_layers_for_vae - 0.99)))
+        vae_model.add_loss(0.5 * K.mean(K.square(discriminator_layers_for_vae - 1)))
         if vae_use_sse:
             vae_model.add_loss(d_loss) # may makes outputs blurry
-        vae_model.compile(optimizer=optimizer, loss=None)
+        vae_model.compile(optimizer=optimizer_g, loss=None)
 
     # Now that the generator_model is compiled, we can make the discriminator layers trainable.
     for layer in discriminator.layers:
@@ -218,11 +222,11 @@ def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate
     discriminator_real = Model([real_samples], [discriminator_output_from_real_samples])
     discriminator_fake = Model([generator_input_for_discriminator], [discriminator_output_from_generator])
     
-    discriminator_real.add_loss(0.5 * K.mean(K.square(discriminator_output_from_real_samples - 0.99))) # one side soft label
+    discriminator_real.add_loss(0.5 * K.mean(K.square(discriminator_output_from_real_samples - 1)))
     discriminator_fake.add_loss(0.5 * K.mean(K.square(discriminator_output_from_generator)))
     
-    discriminator_real.compile(optimizer=optimizer, loss=None)
-    discriminator_fake.compile(optimizer=optimizer, loss=None)
+    discriminator_real.compile(optimizer=optimizer_d, loss=None)
+    discriminator_fake.compile(optimizer=optimizer_d, loss=None)
 
     return (generator_model, discriminator_real, discriminator_fake, vae_model, encoder_model, generator, discriminator) if use_vae else (generator_model, discriminator_real, discriminator_fake, generator, discriminator)
 
