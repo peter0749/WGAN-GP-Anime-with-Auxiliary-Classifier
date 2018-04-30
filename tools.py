@@ -43,7 +43,7 @@ def get_imgaug():
                     iaa.AddToHueAndSaturation((-5, 5)), # change hue and saturation
                     # either change the brightness of the whole image (sometimes
                     # per channel) or change the brightness of subareas
-                    iaa.Multiply((0.5, 1.5), per_channel=0.5)
+                    iaa.Multiply((0.9, 1.1), per_channel=0.5)
                 ],
                 random_order=True
             )
