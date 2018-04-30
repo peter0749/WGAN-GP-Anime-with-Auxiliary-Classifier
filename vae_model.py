@@ -56,66 +56,60 @@ def up(filters, dropout_rate=0, bn=False):
 
 def residual_discriminator(h=128, w=128, c=3, dropout_rate=0.1):
 
-    inputs = Input(shape=(h,w,c))
+    inputs = Input(shape=(h,w,c)) # 48x48@c
 
     # block 1:
-    x = conv(32, 3, 2, pad='same') (inputs) # 32
+    x = conv(32, 3, 2, pad='same') (inputs) # 24x24@32
     x = BatchNormalization() (x)
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 2:
-    x = conv(64, 3, 2, pad='same') (x) # 64^2
+    x = conv(64, 3, 2, pad='same') (x) # 12x12@64
     x = BatchNormalization() (x)
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     x = _res_conv(64, 1, dropout_rate, True) (x)
     
-    p = x
-    
     # block 3:
-    x = conv(128, 3, 2) (p) # 128^2
+    x = conv(128, 3, 2) (x) # 6x6@128
     x = BatchNormalization() (x)
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     x = _res_conv(128, 1, dropout_rate, True) (x)
     
-    # block 4:
-    x = _res_conv(256, 1, dropout_rate, True) (x) # 256
+    p = x # 6x6@128
     
-    hidden = Flatten() (x)
+    hidden = Flatten() (x) # 6*6*256
     dis = Dense(1, kernel_initializer='he_normal') (hidden) # We don't need 'sigmoid' here!!
     model = Model([inputs], [dis])
     return model
 
 def residual_encoder(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate=0.1):
 
-    inputs = Input(shape=(h,w,c))
+    inputs = Input(shape=(h,w,c)) # 48x48@c
 
     # block 1:
-    x = conv(32, 3, 2, pad='same') (inputs) # 32
+    x = conv(32, 3, 2, pad='same') (inputs) # 24x24@32
     x = BatchNormalization() (x)
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 2:
-    x = conv(64, 3, 2, pad='same') (x) # 64^2
+    x = conv(64, 3, 2, pad='same') (x) # 12x12@64
     x = BatchNormalization() (x)
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     x = _res_conv(64, 1, dropout_rate, True) (x)
     
-    p = x
-    
     # block 3:
-    x = conv(128, 3, 2) (p) # 128^2
+    x = conv(128, 3, 2) (x) # 6x6@128
     x = BatchNormalization() (x)
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     x = _res_conv(128, 1, dropout_rate, True) (x)
     
-    # block 4:
-    x = _res_conv(256, 1, dropout_rate, True) (x) # 256
+    p = x # 6x6@128
     
     hidden = Flatten() (x)
 
@@ -128,18 +122,23 @@ def residual_encoder(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_r
 
 def residual_decoder(h, w, c=3, latent_dim=2, dropout_rate=0.1):
 
+    hid_channel = 128
     inputs_ = Input(shape=(latent_dim,))
-    transform = Dense(h*w*128) (inputs_)
+    transform = Dense(h*w*hid_channel) (inputs_) # 6*6*hid_channel
     transform = BatchNormalization() (transform)
     transform = LeakyReLU(0.2) (transform)
-    reshape = Reshape((h,w,128)) (transform)
+    reshape = Reshape((h,w,hid_channel)) (transform) # 6x6@hid_channel
 
-    up1 = up(128, dropout_rate, bn=True) (reshape) # 128^2
-    cv1 = _res_conv(128, 1, dropout_rate, True) (up1) 
-    up2 = up(64,  dropout_rate, bn=True) (up1) # 64^2
-    cv2 = _res_conv(64, 1, dropout_rate, True) (up2)
-    cv3 = _res_conv(32, 1, dropout_rate, True) (cv2) # 32
-    outputs = Conv2D(c, (1, 1), padding='valid', activation='tanh') (cv3)
+    x = up(128, dropout_rate, bn=True) (reshape) # 12x12@128
+    x = _res_conv(128, 1, dropout_rate, True) (x)
+    
+    x = up(64,  dropout_rate, bn=True) (x) # 24x24@64
+    x = _res_conv(64, 1, dropout_rate, True) (x)
+    
+    x = up(32,  dropout_rate, bn=True) (x) # 48x48@32
+    x = _res_conv(32, 1, dropout_rate, True) (x)
+    
+    outputs = Conv2D(c, (1, 1), padding='valid', activation='tanh') (x) # 48x48@c
 
     model = Model([inputs_], [outputs])
     return model

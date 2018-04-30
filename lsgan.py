@@ -29,8 +29,8 @@ from tqdm import tqdm
 
 BS = args.batch_size
 EPOCHS = args.epochs
-w, h, c = 96, 96, 3
-latent_dim = 100
+w, h, c = 48, 48, 3
+latent_dim = 1000
 generator_model, discriminator_real, discriminator_fake, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, use_vae=False)
 
 x_train = get_all_data('./anime-faces', height=h, width=w)
