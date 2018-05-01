@@ -3,7 +3,7 @@ import keras
 from keras.models import Model
 from keras.optimizers import Adam, SGD, RMSprop
 from keras.layers.merge import _Merge
-from keras.layers import Input, Add, Activation, Dense, Reshape, Flatten, GlobalAveragePooling2D, BatchNormalization, LeakyReLU, GaussianNoise
+from keras.layers import Input, Add, Activation, Dense, Reshape, Flatten, GlobalAveragePooling2D, LeakyReLU, GaussianNoise
 from keras.layers.core import Dropout, Lambda
 from keras.layers.convolutional import Conv2D, Conv2DTranspose, UpSampling2D, ZeroPadding2D
 from keras.layers.merge import concatenate
@@ -60,7 +60,7 @@ def sampling(args, latent_dim=2, epsilon_std=1.0):
 def conv(f, k=4, stride=1, act=None, pad='same'):
     return Conv2D(f, (k, k), strides=(stride,stride), activation=act, kernel_initializer='he_normal', padding=pad)
 
-def _res_conv(f, k=4, dropout=0.1, bn=False): # very simple residual module
+def _res_conv(f, k=4, dropout=0.1): # very simple residual module
     def block(inputs):
         channels = int(inputs.shape[-1])
         cs = conv(f, k, stride=1) (inputs)
@@ -71,8 +71,6 @@ def _res_conv(f, k=4, dropout=0.1, bn=False): # very simple residual module
             t1 = inputs
 
         out = Add()([t1, cs]) # t1 + c2
-        if bn:
-            out = BatchNormalization(momentum=0.9) (out)
         out = LeakyReLU(0.1) (out)
         if dropout>0:
             out = Dropout(dropout) (out)
@@ -91,24 +89,21 @@ def residual_discriminator(h=128, w=128, c=3, dropout_rate=0.1):
     
     # block 2:
     x = conv(128, 4, 2, pad='same') (x) # 8x8@128
-    # x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 3:
     x = conv(256, 4, 2) (x) # 4x4@256
-    # x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 3:
     x = conv(256, 4, 2) (x) # 2x2@256
-    # x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 4:
-    x = _res_conv(512, 4, dropout_rate, bn=False) (x) # 2x2@512
+    x = _res_conv(512, 4, dropout_rate) (x) # 2x2@512
     
     hidden = Flatten() (x) # 2*2*512
     
@@ -128,24 +123,21 @@ def residual_encoder(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_r
     
     # block 2:
     x = conv(128, 4, 2, pad='same') (x) # 8x8@128
-    x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 3:
     x = conv(256, 4, 2) (x) # 4x4@256
-    x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 3:
     x = conv(256, 4, 2) (x) # 2x2@256
-    x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 4:
-    x = _res_conv(512, 4, dropout_rate, bn=True) (x) # 2x2@512
+    x = _res_conv(512, 4, dropout_rate) (x) # 2x2@512
     
     hidden = Flatten() (x) # 2*2*512
 
@@ -163,7 +155,6 @@ def residual_decoder(h, w, c=3, latent_dim=2, dropout_rate=0.1):
     hidden = inputs_
     
     transform = Dense(h*w*256, kernel_regularizer=l2(0.001)) (hidden)
-    # transform = BatchNormalization(momentum=0.9) (transform)
     transform = LeakyReLU(0.2) (transform)
     reshape = Reshape((h,w,256)) (transform)
 
@@ -172,27 +163,23 @@ def residual_decoder(h, w, c=3, latent_dim=2, dropout_rate=0.1):
     
     x = UpSampling2D((2,2)) (x) # 4x4@256
     x = Conv2DTranspose(128, 4, padding='same') (x) # 4x4@128
-    # x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
     
     x = UpSampling2D((2,2)) (x) # 8x8@128
     x = Conv2DTranspose(128, 4, padding='same') (x) # 8x8@128
-    # x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
     
     x = UpSampling2D((2,2)) (x) # 16x16@128
     x = Conv2DTranspose(64, 4, padding='same') (x)  # 16x16@64
-    # x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
     
-    x = _res_conv(64, 4, dropout_rate, bn=False) (x) # 16x16@64
+    x = _res_conv(64, 4, dropout_rate) (x) # 16x16@64
     
     x = UpSampling2D((2,2)) (x) # 32x32@64
     x = Conv2DTranspose(32, 4, padding='same') (x)  # 32x32@32
-    # x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
     
-    x = _res_conv(32, 4, dropout_rate, bn=False) (x) # 32x32@32
+    x = _res_conv(32, 4, dropout_rate) (x) # 32x32@32
     
     outputs = Conv2DTranspose(c, 4, padding='same', activation='tanh') (x) # 32x32@c
 
