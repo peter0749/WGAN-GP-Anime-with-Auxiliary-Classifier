@@ -8,7 +8,6 @@ from skimage.io import imsave
 from skimage.transform import resize
 from skimage.color import gray2rgb
 from keras.datasets import mnist
-
 import imgaug as ia
 from imgaug import augmenters as iaa
 import numpy as np

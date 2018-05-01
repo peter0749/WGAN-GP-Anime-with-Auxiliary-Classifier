@@ -10,8 +10,8 @@ from keras.layers.merge import concatenate
 from keras.regularizers import l2
 from keras import metrics
 from keras import backend as K
-from pixel_shuffler import PixelShuffler # PixelShuffler layer
 import tensorflow as tf
+from weightnorm import AdamWithWeightnorm
 
 def RandomWeightedAverage():
     def block(input_list):
@@ -221,8 +221,8 @@ def build_residual_vae(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout
 
 def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate=0.1, GRADIENT_PENALTY_WEIGHT=10, batch_size=8, use_vae=False, vae_use_sse=True):
     
-    optimizer_g = Adam(0.0001, 0.5)
-    optimizer_d = Adam(0.0001, 0.5)
+    optimizer_g = AdamWithWeightnorm(lr=0.0001, beta_1=0.5)
+    optimizer_d = AdamWithWeightnorm(lr=0.0001, beta_1=0.5)
     
     vae_input = Input(shape=(h,w,c))
     encoder_model, t_h, t_w = residual_encoder(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=epsilon_std, dropout_rate=dropout_rate)

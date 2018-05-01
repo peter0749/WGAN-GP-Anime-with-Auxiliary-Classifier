@@ -1,8 +1,8 @@
 import argparse
 parser = argparse.ArgumentParser(description='Music Generation with VAE')
-parser.add_argument('--batch_size', type=int, default=16, required=False,
+parser.add_argument('--batch_size', type=int, default=32, required=False,
                     help='batch size')
-parser.add_argument('--epochs', type=int, default=50, required=False,
+parser.add_argument('--epochs', type=int, default=120, required=False,
                     help='epochs')
 parser.add_argument('--std', type=float, default=1.0, required=False,
                     help='sampling std')
@@ -29,7 +29,7 @@ from tqdm import tqdm
 
 BS = args.batch_size
 EPOCHS = args.epochs
-w, h, c = 48, 48, 3
+w, h, c = 96, 96, 3
 latent_dim = 100
 D_ITER = 5
 generator_model, discriminator_model, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, use_vae=False)
