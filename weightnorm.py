@@ -111,7 +111,7 @@ class AdamWithWeightnorm(Adam):
         if self.initial_decay > 0:
             lr *= (1. / (1. + self.decay * self.iterations))
 
-        t = self.iterations + 1
+        t = K.cast(self.iterations + 1, 'float32') # eliminate tf.pow error: "TypeError: Input 'y' of 'Pow' Op has type int64 that does not match type float32 of argument 'x'."
         lr_t = lr * K.sqrt(1. - K.pow(self.beta_2, t)) / (1. - K.pow(self.beta_1, t))
 
         shapes = [K.get_variable_shape(p) for p in params]
