@@ -81,32 +81,36 @@ def _res_conv(f, k=4, dropout=0.1, bn=False): # very simple residual module
 
 def residual_discriminator(h=128, w=128, c=3, dropout_rate=0.1):
 
-    inputs = Input(shape=(h,w,c))
+    inputs = Input(shape=(h,w,c)) # 32x32@c
 
     # block 1:
-    x = conv(64, 4, 2, pad='same') (inputs) # 24x24@64
+    x = conv(32, 4, 1, pad='same') (inputs) # 32x32@32. stride=1 -> reduce checkboard artifacts
+    x = conv(64, 4, 2, pad='same') (inputs) # 16x16@64
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 2:
-    x = conv(128, 4, 2, pad='same') (x) # 12x12@128
-    x = BatchNormalization(momentum=0.9) (x)
+    x = conv(128, 4, 2, pad='same') (x) # 8x8@128
+    # x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 3:
-    x = conv(256, 4, 2) (x) # 6x6@256
-    x = BatchNormalization(momentum=0.9) (x)
+    x = conv(256, 4, 2) (x) # 4x4@256
+    # x = BatchNormalization(momentum=0.9) (x)
+    x = LeakyReLU(0.2) (x)
+    x = Dropout(dropout_rate) (x)
+    
+    # block 3:
+    x = conv(256, 4, 2) (x) # 2x2@256
+    # x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 4:
-    x = conv(512, 4, 1) (x) # 6x6@512
-    x = BatchNormalization(momentum=0.9) (x)
-    x = LeakyReLU(0.2) (x)
-    x = Dropout(dropout_rate) (x)
+    x = _res_conv(512, 4, dropout_rate, bn=False) (x) # 2x2@512
     
-    hidden = Flatten() (x) # 6*6*512
+    hidden = Flatten() (x) # 2*2*512
     
     out = Dense(1, kernel_regularizer=l2(0.001), kernel_initializer='he_normal') (hidden)
     model = Model([inputs], [out])
@@ -114,41 +118,43 @@ def residual_discriminator(h=128, w=128, c=3, dropout_rate=0.1):
 
 def residual_encoder(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate=0.1):
 
-    inputs = Input(shape=(h,w,c))
+    inputs = Input(shape=(h,w,c)) # 32x32@c
 
     # block 1:
-    x = conv(64, 4, 2, pad='same') (inputs) # 24x24@64
+    x = conv(32, 4, 1, pad='same') (inputs) # 32x32@32. stride=1 -> reduce checkboard artifacts
+    x = conv(64, 4, 2, pad='same') (inputs) # 16x16@64
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 2:
-    x = conv(128, 4, 2, pad='same') (x) # 12x12@128
+    x = conv(128, 4, 2, pad='same') (x) # 8x8@128
     x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
-    p = x
+    # block 3:
+    x = conv(256, 4, 2) (x) # 4x4@256
+    x = BatchNormalization(momentum=0.9) (x)
+    x = LeakyReLU(0.2) (x)
+    x = Dropout(dropout_rate) (x)
     
     # block 3:
-    x = conv(256, 4, 2) (x) # 6x6@256
+    x = conv(256, 4, 2) (x) # 2x2@256
     x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 4:
-    x = conv(512, 4, 1) (x) # 6x6@512
-    x = BatchNormalization(momentum=0.9) (x)
-    x = LeakyReLU(0.2) (x)
-    x = Dropout(dropout_rate) (x)
+    x = _res_conv(512, 4, dropout_rate, bn=True) (x) # 2x2@512
     
-    hidden = Flatten() (x) # 6*6*512
+    hidden = Flatten() (x) # 2*2*512
 
     z_mean =    Dense(latent_dim, kernel_regularizer=l2(0.001))(hidden)
     z_log_var = Dense(latent_dim, kernel_regularizer=l2(0.001))(hidden)
 
     z = Lambda(sampling, output_shape=(latent_dim,), arguments={'latent_dim':latent_dim, 'epsilon_std':epsilon_std}) ([z_mean, z_log_var])
     model = Model([inputs], [z, z_mean, z_log_var])
-    return model, int(p.shape[1]), int(p.shape[2]) # h, w
+    return model, int(x.shape[1]), int(x.shape[2]) # h, w
 
 def residual_decoder(h, w, c=3, latent_dim=2, dropout_rate=0.1):
 
@@ -157,28 +163,38 @@ def residual_decoder(h, w, c=3, latent_dim=2, dropout_rate=0.1):
     hidden = inputs_
     
     transform = Dense(h*w*256, kernel_regularizer=l2(0.001)) (hidden)
-    transform = BatchNormalization(momentum=0.9) (transform)
+    # transform = BatchNormalization(momentum=0.9) (transform)
     transform = LeakyReLU(0.2) (transform)
     reshape = Reshape((h,w,256)) (transform)
 
-    x = reshape # 12x12@256
+    x = reshape # 2x2@256
     x = Dropout(dropout_rate) (x) # prevent overfitting
     
-    x = UpSampling2D((2,2)) (x) # 24x24@256
-    x = Conv2DTranspose(128, 4, padding='same') (x) # 24x24@128
-    x = BatchNormalization(momentum=0.9) (x)
+    x = UpSampling2D((2,2)) (x) # 4x4@256
+    x = Conv2DTranspose(128, 4, padding='same') (x) # 4x4@128
+    # x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
     
-    x = UpSampling2D((2,2)) (x) # 48x48@128
-    x = Conv2DTranspose(64, 4, padding='same') (x) # 48x48@64
-    x = BatchNormalization(momentum=0.9) (x)
+    x = UpSampling2D((2,2)) (x) # 8x8@128
+    x = Conv2DTranspose(128, 4, padding='same') (x) # 8x8@128
+    # x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
     
-    x = Conv2DTranspose(32, 4, padding='same') (x) # 48x48@32
-    x = BatchNormalization(momentum=0.9) (x)
+    x = UpSampling2D((2,2)) (x) # 16x16@128
+    x = Conv2DTranspose(64, 4, padding='same') (x)  # 16x16@64
+    # x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
     
-    outputs = Conv2DTranspose(c, 4, padding='same', activation='tanh') (x) # 48x48@c
+    x = _res_conv(64, 4, dropout_rate, bn=False) (x) # 16x16@64
+    
+    x = UpSampling2D((2,2)) (x) # 32x32@64
+    x = Conv2DTranspose(32, 4, padding='same') (x)  # 32x32@32
+    # x = BatchNormalization(momentum=0.9) (x)
+    x = LeakyReLU(0.2) (x)
+    
+    x = _res_conv(32, 4, dropout_rate, bn=False) (x) # 32x32@32
+    
+    outputs = Conv2DTranspose(c, 4, padding='same', activation='tanh') (x) # 32x32@c
 
     model = Model([inputs_], [outputs])
     return model
