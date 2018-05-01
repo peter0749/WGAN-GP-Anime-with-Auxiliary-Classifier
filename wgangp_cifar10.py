@@ -21,7 +21,7 @@ K.set_session(session)
 from keras.models import *
 from tools import *
 from vae_model import build_residual_vae, build_vae_gan
-from keras.datasets import mnist
+from keras.datasets import cifar10
 from keras.callbacks import TensorBoard
 from keras.callbacks import Callback
 from skimage.io import imsave
@@ -29,13 +29,13 @@ from tqdm import tqdm
 
 BS = args.batch_size
 EPOCHS = args.epochs
-w, h, c = 48, 48, 3
+w, h, c = 32, 32, 3
 latent_dim = 100
 D_ITER = 5
 generator_model, discriminator_model, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, use_vae=False)
 
-x_train = get_all_data('./anime-faces', height=h, width=w) # dtype: np.uint8
-seq = get_imgaug()
+(x_train, _), (___, __) = cifar10.load_data()
+x_train = (x_train.astype(np.float32)-127.5) / 127.5
 
 if not os.path.exists('./preview'):
     os.makedirs('./preview')
@@ -49,8 +49,6 @@ for epoch in range(EPOCHS):
             r_bound = min(len(x_train), i+BS)
             l_bound = r_bound - BS
             image_batch = x_train[l_bound:r_bound]
-            image_batch = seq.augment_images(image_batch)
-            image_batch = (image_batch.astype(np.float32) - 127.5) / 127.5
             noise = np.random.normal(0, args.std, (BS, latent_dim)).astype(np.float32)
             msg = ''
             msg += 'DL: {:.2f}, '.format(np.mean(discriminator_model.train_on_batch([image_batch, noise], None)))

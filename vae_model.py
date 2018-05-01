@@ -57,22 +57,22 @@ def sampling(args, latent_dim=2, epsilon_std=1.0):
                           mean=0., stddev=epsilon_std)
     return z_mean + K.exp(z_log_var) * epsilon
 
-def conv(f, k=3, stride=1, act=None, pad='same'):
+def conv(f, k=4, stride=1, act=None, pad='same'):
     return Conv2D(f, (k, k), strides=(stride,stride), activation=act, kernel_initializer='he_normal', padding=pad)
 
-def _res_conv(f, stride=1, dropout=0.1, bn=False): # very simple residual module
+def _res_conv(f, k=4, dropout=0.1, bn=False): # very simple residual module
     def block(inputs):
         channels = int(inputs.shape[-1])
-        cs = conv(f, 3, stride=stride) (inputs)
+        cs = conv(f, k, stride=1) (inputs)
 
-        if f!=channels or stride!=1:
-            t1 = conv(f, 1, stride=stride, act=None, pad='same') (inputs) # identity mapping
+        if f!=channels:
+            t1 = conv(f, 1, stride=1, act=None, pad='valid') (inputs) # identity mapping
         else:
             t1 = inputs
 
         out = Add()([t1, cs]) # t1 + c2
         if bn:
-            out = BatchNormalization() (out)
+            out = BatchNormalization(momentum=0.9) (out)
         out = LeakyReLU(0.1) (out)
         if dropout>0:
             out = Dropout(dropout) (out)
@@ -82,39 +82,34 @@ def _res_conv(f, stride=1, dropout=0.1, bn=False): # very simple residual module
 def residual_discriminator(h=128, w=128, c=3, dropout_rate=0.1):
 
     inputs = Input(shape=(h,w,c))
-    
-    gaussian_noise = GaussianNoise(0.001) (inputs)
 
     # block 1:
-    x = conv(32, 3, 2, pad='same') (gaussian_noise) # 32
-    x = BatchNormalization() (x)
+    x = conv(64, 4, 2, pad='same') (inputs) # 24x24@64
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 2:
-    x = conv(64, 3, 2, pad='same') (x) # 64^2
-    x = BatchNormalization() (x)
+    x = conv(128, 4, 2, pad='same') (x) # 12x12@128
+    x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
-    x = _res_conv(64, 1, dropout_rate, True) (x)
-    
-    p = x
+    x = Dropout(dropout_rate) (x)
     
     # block 3:
-    x = conv(128, 3, 2) (p) # 128^2
-    x = BatchNormalization() (x)
+    x = conv(256, 4, 2) (x) # 6x6@256
+    x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
-    x = _res_conv(128, 1, dropout_rate, True) (x)
+    x = Dropout(dropout_rate) (x)
     
     # block 4:
-    x = _res_conv(256, 1, dropout_rate, True) (x) # 256
+    x = conv(512, 4, 1) (x) # 6x6@512
+    x = BatchNormalization(momentum=0.9) (x)
+    x = LeakyReLU(0.2) (x)
+    x = Dropout(dropout_rate) (x)
     
-    hidden = Flatten() (x)
-    #hidden = Dense(1024, kernel_initializer='he_normal', kernel_regularizer=l2(0.001)) (hidden)
-    #hidden = BatchNormalization() (hidden)
-    #hidden = LeakyReLU(0.2) (hidden)
+    hidden = Flatten() (x) # 6*6*512
     
-    dis = Dense(1, kernel_initializer='he_normal', kernel_regularizer=l2(0.001)) (hidden) # We don't need 'sigmoid' here!!
-    model = Model([inputs], [dis])
+    out = Dense(1, kernel_regularizer=l2(0.001), kernel_initializer='he_normal') (hidden)
+    model = Model([inputs], [out])
     return model
 
 def residual_encoder(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate=0.1):
@@ -122,32 +117,31 @@ def residual_encoder(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_r
     inputs = Input(shape=(h,w,c))
 
     # block 1:
-    x = conv(32, 3, 2, pad='same') (inputs) # 32
-    x = BatchNormalization() (x)
+    x = conv(64, 4, 2, pad='same') (inputs) # 24x24@64
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 2:
-    x = conv(64, 3, 2, pad='same') (x) # 64^2
-    x = BatchNormalization() (x)
+    x = conv(128, 4, 2, pad='same') (x) # 12x12@128
+    x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
-    x = _res_conv(64, 1, dropout_rate, True) (x)
+    x = Dropout(dropout_rate) (x)
     
     p = x
     
     # block 3:
-    x = conv(128, 3, 2) (p) # 128^2
-    x = BatchNormalization() (x)
+    x = conv(256, 4, 2) (x) # 6x6@256
+    x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
-    x = _res_conv(128, 1, dropout_rate, True) (x)
+    x = Dropout(dropout_rate) (x)
     
     # block 4:
-    x = _res_conv(256, 1, dropout_rate, True) (x) # 256
+    x = conv(512, 4, 1) (x) # 6x6@512
+    x = BatchNormalization(momentum=0.9) (x)
+    x = LeakyReLU(0.2) (x)
+    x = Dropout(dropout_rate) (x)
     
-    hidden = Flatten() (x)
-    #hidden = Dense(1024, kernel_initializer='he_normal', kernel_regularizer=l2(0.001)) (hidden)
-    #hidden = BatchNormalization() (hidden)
-    #hidden = LeakyReLU(0.2) (hidden)
+    hidden = Flatten() (x) # 6*6*512
 
     z_mean =    Dense(latent_dim, kernel_regularizer=l2(0.001))(hidden)
     z_log_var = Dense(latent_dim, kernel_regularizer=l2(0.001))(hidden)
@@ -161,37 +155,30 @@ def residual_decoder(h, w, c=3, latent_dim=2, dropout_rate=0.1):
     inputs_ = Input(shape=(latent_dim,))
     
     hidden = inputs_
-    #hidden = Dense(1024, kernel_regularizer=l2(0.001)) (hidden)
-    #hidden = BatchNormalization() (hidden)
-    #hidden = LeakyReLU(0.2) (hidden)
     
-    transform = Dense(h*w*128, kernel_regularizer=l2(0.001)) (hidden)
-    transform = BatchNormalization() (transform)
+    transform = Dense(h*w*256, kernel_regularizer=l2(0.001)) (hidden)
+    transform = BatchNormalization(momentum=0.9) (transform)
     transform = LeakyReLU(0.2) (transform)
-    reshape = Reshape((h,w,128)) (transform)
+    reshape = Reshape((h,w,256)) (transform)
 
-    x = reshape
+    x = reshape # 12x12@256
+    x = Dropout(dropout_rate) (x) # prevent overfitting
     
-    x = conv(128, 3, 1, pad='same') (x) # 12x12@128
-    x = BatchNormalization() (x)
+    x = UpSampling2D((2,2)) (x) # 24x24@256
+    x = Conv2DTranspose(128, 4, padding='same') (x) # 24x24@128
+    x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
-    x = Dropout(dropout_rate) (x)
     
-    x = PixelShuffler()(x) # 24x24@32
-    
-    x = conv(32, 3, 1, pad='same') (x) # 24x24@32
-    x = BatchNormalization() (x)
+    x = UpSampling2D((2,2)) (x) # 48x48@128
+    x = Conv2DTranspose(64, 4, padding='same') (x) # 48x48@64
+    x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
-    x = _res_conv(32, 1, dropout_rate, True) (x)
     
-    x = PixelShuffler()(x) # 48x48@8
-    
-    x = conv(8, 3, 1, pad='same') (x) # 48x48@8
-    x = BatchNormalization() (x)
+    x = Conv2DTranspose(32, 4, padding='same') (x) # 48x48@32
+    x = BatchNormalization(momentum=0.9) (x)
     x = LeakyReLU(0.2) (x)
-    x = _res_conv(8, 1, dropout_rate, True) (x)
     
-    outputs = Conv2D(c, (1, 1), padding='valid', activation='tanh') (x)
+    outputs = Conv2DTranspose(c, 4, padding='same', activation='tanh') (x) # 48x48@c
 
     model = Model([inputs_], [outputs])
     return model
@@ -218,8 +205,8 @@ def build_residual_vae(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout
 
 def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate=0.1, GRADIENT_PENALTY_WEIGHT=10, batch_size=8, use_vae=False, vae_use_sse=True):
     
-    optimizer_g = Adam(0.0005, 0.5, decay=1e-6)
-    optimizer_d = Adam(0.0001, 0.5)
+    optimizer_g = Adam(0.0001, 0.5, decay=1e-8)
+    optimizer_d = Adam(0.0001, 0.5, decay=1e-8)
     
     vae_input = Input(shape=(h,w,c))
     encoder_model, t_h, t_w = residual_encoder(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=epsilon_std, dropout_rate=dropout_rate)
@@ -273,7 +260,7 @@ def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate
     averaged_samples_out = discriminator(averaged_samples)
     
     discriminator_model = Model([real_samples, generator_input_for_discriminator], [discriminator_output_from_real_samples, discriminator_output_from_generator, averaged_samples_out])
-    discriminator_model.add_loss(K.mean(discriminator_output_from_real_samples) - K.mean(discriminator_output_from_generator) + gradient_penalty_loss(averaged_samples_out, averaged_samples, 10))
+    discriminator_model.add_loss(K.mean(discriminator_output_from_real_samples) - K.mean(discriminator_output_from_generator) + gradient_penalty_loss(averaged_samples_out, averaged_samples, 10) + K.random_uniform(shape=(1,), minval=-1e-5, maxval=1e-5))
     discriminator_model.compile(optimizer=optimizer_d, loss=None)
 
     return (generator_model, discriminator_model, vae_model, encoder_model, generator, discriminator) if use_vae else (generator_model, discriminator_model, generator, discriminator)
