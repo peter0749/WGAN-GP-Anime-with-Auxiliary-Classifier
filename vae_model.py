@@ -205,8 +205,8 @@ def build_residual_vae(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout
 
 def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate=0.1, GRADIENT_PENALTY_WEIGHT=10, batch_size=8, use_vae=False, vae_use_sse=True):
     
-    optimizer_g = Adam(0.0001, 0.5, decay=1e-8)
-    optimizer_d = Adam(0.0001, 0.5, decay=1e-8)
+    optimizer_g = Adam(0.0001, 0.5)
+    optimizer_d = Adam(0.0001, 0.5)
     
     vae_input = Input(shape=(h,w,c))
     encoder_model, t_h, t_w = residual_encoder(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=epsilon_std, dropout_rate=dropout_rate)
@@ -260,7 +260,7 @@ def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate
     averaged_samples_out = discriminator(averaged_samples)
     
     discriminator_model = Model([real_samples, generator_input_for_discriminator], [discriminator_output_from_real_samples, discriminator_output_from_generator, averaged_samples_out])
-    discriminator_model.add_loss(K.mean(discriminator_output_from_real_samples) - K.mean(discriminator_output_from_generator) + gradient_penalty_loss(averaged_samples_out, averaged_samples, 10) + K.random_uniform(shape=(1,), minval=-1e-5, maxval=1e-5))
+    discriminator_model.add_loss(K.mean(discriminator_output_from_real_samples) - K.mean(discriminator_output_from_generator) + gradient_penalty_loss(averaged_samples_out, averaged_samples, GRADIENT_PENALTY_WEIGHT))
     discriminator_model.compile(optimizer=optimizer_d, loss=None)
 
     return (generator_model, discriminator_model, vae_model, encoder_model, generator, discriminator) if use_vae else (generator_model, discriminator_model, generator, discriminator)
