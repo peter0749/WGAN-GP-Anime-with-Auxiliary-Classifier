@@ -188,7 +188,7 @@ def residual_decoder(h, w, c=3, latent_dim=2, dropout_rate=0.1):
 
 def build_residual_vae(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate=0.1):
 
-    optimizer = RMSprop(lr=0.0005)
+    optimizer = AdamWithWeightnorm(lr=0.0001, beta_1=0.5)
     images = Input(shape=(h,w,c), name='vae_input_images')
 
     encoder_model, t_h, t_w = residual_encoder(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=epsilon_std, dropout_rate=dropout_rate)
