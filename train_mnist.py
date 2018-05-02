@@ -29,6 +29,6 @@ valid_generator = mnist_generator(x_test,  w, h, BS)
 if not os.path.exists('./mnist_preview'):
     os.makedirs('./mnist_preview')
 
-vae.fit_generator(train_generator, validation_data=valid_generator, epochs=EPOCHS, shuffle=True, callbacks=[Preview(decoder, './mnist_preview', h, w, c, latent_dim, std=args.std, batch_size=BS)], workers=3)
+vae.fit_generator(train_generator, validation_data=valid_generator, epochs=EPOCHS, shuffle=True, callbacks=[Preview(decoder, './mnist_preview', h, w, c, latent_dim, std=1.0, batch_size=BS)], workers=3)
 decoder.save('./mnist_decoder.h5')
 encoder.save('./mnist_encoder.h5')
