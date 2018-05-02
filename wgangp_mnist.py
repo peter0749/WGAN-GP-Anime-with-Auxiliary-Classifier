@@ -29,13 +29,14 @@ from tqdm import tqdm
 
 BS = args.batch_size
 EPOCHS = args.epochs
-w, h, c = 32, 32, 3
+w, h, c = 32, 32, 1
 latent_dim = 100
 D_ITER = 5
 generator_model, discriminator_model, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, use_vae=False)
 
 (x_train, _), (___, __) = mnist.load_data()
-x_train = (x_train.astype(np.float32)-127.5) / 127.5
+x_train = np.squeeze(x_train.astype(np.float32)-127.5) / 127.5
+x_train = np.pad(x_train, ((0,0),(2,2),(2,2)), 'constant')[...,np.newaxis]
 
 if not os.path.exists('./preview'):
     os.makedirs('./preview')
