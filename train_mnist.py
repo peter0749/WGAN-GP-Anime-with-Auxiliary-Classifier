@@ -15,8 +15,8 @@ from keras.datasets import mnist
 from keras.callbacks import Callback
 from skimage.io import imsave
 
-w, h, c = 28, 28, 1
-latent_dim = 2
+w, h, c = 32, 32, 1
+latent_dim = 100
 BS = 16
 EPOCHS = 10
 

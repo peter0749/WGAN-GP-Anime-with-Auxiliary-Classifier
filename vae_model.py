@@ -57,10 +57,10 @@ def sampling(args, latent_dim=2, epsilon_std=1.0):
                           mean=0., stddev=epsilon_std)
     return z_mean + K.exp(z_log_var) * epsilon
 
-def conv(f, k=4, stride=1, act=None, pad='same'):
+def conv(f, k=5, stride=1, act=None, pad='same'):
     return Conv2D(f, (k, k), strides=(stride,stride), activation=act, kernel_initializer='he_normal', padding=pad)
 
-def _res_conv(f, k=4, dropout=0.1): # very simple residual module
+def _res_conv(f, k=5, dropout=0.1): # very simple residual module
     def block(inputs):
         channels = int(inputs.shape[-1])
         cs = conv(f, k, stride=1) (inputs)
@@ -82,28 +82,28 @@ def residual_discriminator(h=128, w=128, c=3, dropout_rate=0.1):
     inputs = Input(shape=(h,w,c)) # 32x32@c
 
     # block 1:
-    x = conv(32, 4, 1, pad='same') (inputs) # 32x32@32. stride=1 -> reduce checkboard artifacts
-    x = conv(64, 4, 2, pad='same') (inputs) # 16x16@64
+    x = conv(32, 5, 1, pad='same') (inputs) # 32x32@32. stride=1 -> reduce checkboard artifacts
+    x = conv(64, 5, 2, pad='same') (inputs) # 16x16@64
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 2:
-    x = conv(128, 4, 2, pad='same') (x) # 8x8@128
+    x = conv(128, 5, 2, pad='same') (x) # 8x8@128
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 3:
-    x = conv(256, 4, 2) (x) # 4x4@256
+    x = conv(256, 5, 2) (x) # 4x4@256
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 3:
-    x = conv(256, 4, 2) (x) # 2x2@256
+    x = conv(256, 5, 2) (x) # 2x2@256
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 4:
-    x = _res_conv(512, 4, dropout_rate) (x) # 2x2@512
+    x = _res_conv(512, 5, dropout_rate) (x) # 2x2@512
     
     hidden = Flatten() (x) # 2*2*512
     
@@ -116,28 +116,28 @@ def residual_encoder(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_r
     inputs = Input(shape=(h,w,c)) # 32x32@c
 
     # block 1:
-    x = conv(32, 4, 1, pad='same') (inputs) # 32x32@32. stride=1 -> reduce checkboard artifacts
-    x = conv(64, 4, 2, pad='same') (inputs) # 16x16@64
+    x = conv(32, 5, 1, pad='same') (inputs) # 32x32@32. stride=1 -> reduce checkboard artifacts
+    x = conv(64, 5, 2, pad='same') (inputs) # 16x16@64
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 2:
-    x = conv(128, 4, 2, pad='same') (x) # 8x8@128
+    x = conv(128, 5, 2, pad='same') (x) # 8x8@128
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 3:
-    x = conv(256, 4, 2) (x) # 4x4@256
+    x = conv(256, 5, 2) (x) # 4x4@256
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 3:
-    x = conv(256, 4, 2) (x) # 2x2@256
+    x = conv(256, 5, 2) (x) # 2x2@256
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 4:
-    x = _res_conv(512, 4, dropout_rate) (x) # 2x2@512
+    x = _res_conv(512, 5, dropout_rate) (x) # 2x2@512
     
     hidden = Flatten() (x) # 2*2*512
 
@@ -162,26 +162,26 @@ def residual_decoder(h, w, c=3, latent_dim=2, dropout_rate=0.1):
     x = Dropout(dropout_rate) (x) # prevent overfitting
     
     x = UpSampling2D((2,2)) (x) # 4x4@256
-    x = Conv2DTranspose(128, 4, padding='same') (x) # 4x4@128
+    x = Conv2DTranspose(128, 5, padding='same') (x) # 4x4@128
     x = LeakyReLU(0.2) (x)
     
     x = UpSampling2D((2,2)) (x) # 8x8@128
-    x = Conv2DTranspose(128, 4, padding='same') (x) # 8x8@128
+    x = Conv2DTranspose(128, 5, padding='same') (x) # 8x8@128
     x = LeakyReLU(0.2) (x)
     
     x = UpSampling2D((2,2)) (x) # 16x16@128
-    x = Conv2DTranspose(64, 4, padding='same') (x)  # 16x16@64
+    x = Conv2DTranspose(64, 5, padding='same') (x)  # 16x16@64
     x = LeakyReLU(0.2) (x)
     
-    x = _res_conv(64, 4, dropout_rate) (x) # 16x16@64
+    x = _res_conv(64, 5, dropout_rate) (x) # 16x16@64
     
     x = UpSampling2D((2,2)) (x) # 32x32@64
-    x = Conv2DTranspose(32, 4, padding='same') (x)  # 32x32@32
+    x = Conv2DTranspose(32, 5, padding='same') (x)  # 32x32@32
     x = LeakyReLU(0.2) (x)
     
-    x = _res_conv(32, 4, dropout_rate) (x) # 32x32@32
+    x = _res_conv(32, 5, dropout_rate) (x) # 32x32@32
     
-    outputs = Conv2DTranspose(c, 4, padding='same', activation='tanh') (x) # 32x32@c
+    outputs = Conv2DTranspose(c, 5, padding='same', activation='tanh') (x) # 32x32@c
 
     model = Model([inputs_], [outputs])
     return model

@@ -25,7 +25,7 @@ from keras.callbacks import Callback
 from skimage.io import imsave
 
 w, h, c = 48, 48, 3
-latent_dim = 2
+latent_dim = 100
 BS = args.batch_size
 EPOCHS = args.epochs
 vae, encoder, decoder = build_residual_vae(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=args.std, dropout_rate=0.2)
