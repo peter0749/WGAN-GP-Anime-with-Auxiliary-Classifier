@@ -41,6 +41,9 @@ x_train = get_all_data('./anime-faces', height=h, width=w)
 if not os.path.exists('./preview'):
     os.makedirs('./preview')
 
+G_FREQ_INV = 5
+g_counter = 0
+
 for epoch in range(EPOCHS):
     print("Epoch: %d / %d"%(epoch+1, EPOCHS))
     np.random.shuffle(x_train)
@@ -53,7 +56,10 @@ for epoch in range(EPOCHS):
             noise = np.random.normal(0, args.std, (BS, latent_dim)).astype(np.float32)
             msg = ''
             msg += 'DL: {:.2f}, '.format(np.mean(discriminator_model.train_on_batch([image_batch, noise], None)))
-            msg += 'GL: {:.2f}, '.format(np.mean(generator_model.train_on_batch(np.random.normal(0, args.std, (BS, latent_dim)).astype(np.float32), None)))
+            g_counter += 1
+            if g_counter==G_FREQ_INV:
+                msg += 'GL: {:.2f}, '.format(np.mean(generator_model.train_on_batch(np.random.normal(0, args.std, (BS, latent_dim)).astype(np.float32), None)))
+                g_counter = 0
             msg += 'VAE_L: {:.2f} '.format(np.mean(vae_model.train_on_batch(image_batch, None)))
             t.set_description(msg)
             t.update()
