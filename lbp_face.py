@@ -27,8 +27,6 @@ def detect_and_crop(filename, cascade_file = "./lbpcascade_animeface.xml", size=
         p0 = max(0,scale-crop.shape[0])
         p1 = max(0,scale-crop.shape[1])
         crop = np.pad(crop, ( (p0//2, p0-p0//2) , (p1//2, p1-p1//2) , (0,0) ), 'constant', constant_values=0)
-        if scale != size:
-            cv2.resize(crop, (size, size), interpolation = cv2.INTER_AREA)
         face_crops.append(crop)
 
     return face_crops
@@ -39,7 +37,7 @@ parser.add_argument('--input_dir', type=str, default='./pixiv_all', required=Fal
                     help='')
 parser.add_argument('--output_dir', type=str, default='./cropped_faces', required=False,
                     help='')
-parser.add_argument('--size', type=int, default=96, required=False,
+parser.add_argument('--min_size', type=int, default=96, required=False,
                     help='')
 parser.add_argument('--cascade_file', type=str, default='./lbpcascade_animeface.xml', required=False,
                     help='')
@@ -56,7 +54,7 @@ img_p_list.extend(glob.glob(args.input_dir+'/**/*.jpg'))
 
 face_cnt = 0
 for img_p in img_p_list:
-    faces = detect_and_crop(img_p, cascade_file=args.cascade_file, size=args.size)
+    faces = detect_and_crop(img_p, cascade_file=args.cascade_file, size=args.min_size)
     if len(faces)==0: 
         continue
     for face in faces:
