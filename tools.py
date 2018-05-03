@@ -109,7 +109,7 @@ class data_generator(Sequence):
         if r_bound > len(self.imgs):
             r_bound = len(self.imgs)
             l_bound = r_bound - self.bs
-        x_batch = np.zeros((r_bound - l_bound, self.h, self.w, self.c))
+        x_batch = np.zeros((r_bound - l_bound, self.h, self.w, self.c), dtype=np.float32 if self.normalize else np.uint8)
         for n, imgp in enumerate(self.imgs[l_bound:r_bound]):
             img = imread(str(imgp), as_grey=(self.c==1))
             if img.shape[0]!=self.h or img.shape[1]!=self.w:
