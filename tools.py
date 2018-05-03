@@ -87,7 +87,7 @@ def get_all_data(images_path, height=128, width=128):
     
 
 class data_generator(Sequence):
-    def __init__(self, images_path, height=128, width=128, channel=3, batch_size=8, shuffle=True):
+    def __init__(self, images_path, height=128, width=128, channel=3, batch_size=8, shuffle=True, normalize=True):
         self.bs = batch_size
         self.imgs = glob.glob(images_path+'/**/*.jpg') ## paths
         self.imgs.extend(glob.glob(images_path+'/**/*.png'))
@@ -95,6 +95,7 @@ class data_generator(Sequence):
         self.w = width
         self.c = channel
         self.shuffle = shuffle
+        self.normalize = normalize
         if self.shuffle:
             np.random.shuffle(self.imgs)
     def __len__(self):
@@ -119,7 +120,7 @@ class data_generator(Sequence):
             if self.c == 3:
                 img = gray2rgb(img)
             img = img[...,:self.c]
-            x_batch[n] = np.clip((img.astype(np.float32)-127.5) / 127.5, -1, 1)
+            x_batch[n] = np.clip((img.astype(np.float32)-127.5) / 127.5, -1, 1) if self.normalize else img[...,:self.c]
         return x_batch, None
 
 def generate_images(generator, path, h, w, c, latent_dim, std, nr, nc, epoch, batch_size=1):

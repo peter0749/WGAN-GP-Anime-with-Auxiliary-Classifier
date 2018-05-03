@@ -34,7 +34,7 @@ latent_dim = 100
 D_ITER = 5
 generator_model, discriminator_model, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, use_vae=False)
 
-x_train = get_all_data('./anime-faces', height=h, width=w) # dtype: np.uint8
+train_generator = data_generator('./anime-faces', height=h, width=w, channel=3, batch_size=BS, shuffle=True, normalize=False)
 seq = get_imgaug()
 
 if not os.path.exists('./preview'):
@@ -43,12 +43,10 @@ if not os.path.exists('./preview'):
 d_counter = 0
 for epoch in range(EPOCHS):
     print("Epoch: %d / %d"%(epoch+1, EPOCHS))
-    np.random.shuffle(x_train)
-    with tqdm(total=int(np.ceil(float(len(x_train)) / BS))) as t:
-        for i in range(0, len(x_train), BS):
-            r_bound = min(len(x_train), i+BS)
-            l_bound = r_bound - BS
-            image_batch = x_train[l_bound:r_bound]
+    train_generator.random_shuffle()
+    with tqdm(total=len(train_generator)) as t:
+        for i in range(len(train_generator)):
+            image_batch = train_generator.__getitem__(i)
             image_batch = seq.augment_images(image_batch)
             image_batch = (image_batch.astype(np.float32) - 127.5) / 127.5
             noise = np.random.normal(0, args.std, (BS, latent_dim)).astype(np.float32)
