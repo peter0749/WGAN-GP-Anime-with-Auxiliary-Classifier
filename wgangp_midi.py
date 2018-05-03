@@ -34,7 +34,7 @@ latent_dim = 100
 D_ITER = 5
 generator_model, discriminator_model, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, use_vae=False)
 
-train_generator = data_generator('./midi', height=h, width=w, channel=3, batch_size=BS, shuffle=True, normalize=True)
+train_generator = data_generator('./midi', height=h, width=w, channel=1, batch_size=BS, shuffle=True, normalize=True)
 
 if not os.path.exists('./preview'):
     os.makedirs('./preview')
