@@ -46,7 +46,7 @@ for epoch in range(EPOCHS):
     train_generator.random_shuffle()
     with tqdm(total=len(train_generator)) as t:
         for i in range(len(train_generator)):
-            image_batch = train_generator.__getitem__(i)
+            image_batch, _ = train_generator.__getitem__(i)
             image_batch = seq.augment_images(image_batch)
             image_batch = (image_batch.astype(np.float32) - 127.5) / 127.5
             noise = np.random.normal(0, args.std, (BS, latent_dim)).astype(np.float32)
