@@ -24,8 +24,11 @@ parser.add_argument('--std', type=float, default=1.0, required=False, help='')
 parser.add_argument('--batch_size', type=int, default=8, required=False, help='')
 args = parser.parse_args()
 
+if not os.path.exists(args.output):
+    os.makedirs(args.output)
+
 model = load_model(args.model, custom_objects={'PixelShuffler':PixelShuffler})
 m = (model.predict(np.random.normal(0, args.std, (args.n, args.d)), batch_size=args.batch_size) * 127.5 + 127.5).astype(np.uint8)
 
 for i in range(args.n):
-    imsave(os.path.join(args.output, 'output_{:04d}'.format(i)), np.squeeze(m[i]))
+    imsave(os.path.join(args.output, 'output_{:04d}.png'.format(i)), np.squeeze(m[i]))
