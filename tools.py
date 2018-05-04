@@ -12,6 +12,29 @@ import imgaug as ia
 from imgaug import augmenters as iaa
 import numpy as np
 
+def z_interpolation(a, b, n=10):
+    l = []
+    for x, y in zip(a, b):
+        l.append(np.linspace(x, y, n))
+    return np.asarray(l).transpose((1,0))
+    
+def generate_image_interpolation(generator, path, h, w, c, latent_dim, std, nr, nc, nt, batch_size=8):
+    interpolate_noise = np.zeros((nt, nr, nc, latent_dim))
+    for ri in range(nr):
+        for ci in range(nc):
+            z_0, z_1 = np.random.normal(0, std, (2, latent_dim))
+            z_t = z_interpolation(z_0, z_1, nt) # shape: (nt, latent_dim)
+            interpolate_noise[:, ri, ci, :] = z_t
+    gs = generator.predict(interpolate_noise.reshape(-1, latent_dim), batch_size=batch_size).reshape(nt, nr, nc, h, w, c)
+    
+    for t in range(nt):
+        figure = np.zeros((h * nr, w * nc, c))
+        for ri in range(nr):
+            for ci in range(nc):
+                figure[h*ri:h*(ri+1), w*ci:w*(ci+1)] = gs[t, ri, ci]
+        figure = np.squeeze(np.clip(figure * 127.5 + 127.5, 0, 255).astype(np.uint8))
+        imsave(os.path.join(path, 't_{:02d}.jpg'.format(t)), figure)
+
 def get_imgaug():
     # Sometimes(0.5, ...) applies the given augmenter in 50% of all cases,
     # e.g. Sometimes(0.5, GaussianBlur(0.3)) would blur roughly every second image.
@@ -89,8 +112,10 @@ def get_all_data(images_path, height=128, width=128):
 class data_generator(Sequence):
     def __init__(self, images_path, height=128, width=128, channel=3, batch_size=8, shuffle=True, normalize=True):
         self.bs = batch_size
-        self.imgs = glob.glob(images_path+'/**/*.jpg') ## paths
+        self.imgs = glob.glob(images_path+'/*.jpg') ## paths
+        self.imgs.extend(glob.glob(images_path+'/*.png'))
         self.imgs.extend(glob.glob(images_path+'/**/*.png'))
+        self.imgs.extend(glob.glob(images_path+'/**/*.jpg'))
         self.h = height
         self.w = width
         self.c = channel
