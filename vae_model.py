@@ -10,6 +10,7 @@ from keras.layers.merge import concatenate
 from keras.regularizers import l2
 from keras import metrics
 from keras import backend as K
+from pixel_shuffler import PixelShuffler
 import tensorflow as tf
 from weightnorm import AdamWithWeightnorm
 
@@ -161,21 +162,25 @@ def residual_decoder(h, w, c=3, latent_dim=2, dropout_rate=0.1):
     x = reshape # 2x2@256
     x = Dropout(dropout_rate) (x) # prevent overfitting
     
-    x = UpSampling2D((2,2)) (x) # 4x4@256
+    # x = UpSampling2D((2,2)) (x) # 4x4@256
+    x = PixelShuffler() (x) # 4x4@64
     x = Conv2DTranspose(128, 5, padding='same') (x) # 4x4@128
     x = LeakyReLU(0.2) (x)
     
-    x = UpSampling2D((2,2)) (x) # 8x8@128
+    # x = UpSampling2D((2,2)) (x) # 8x8@128
+    x = PixelShuffler() (x) # 8x8@32
     x = Conv2DTranspose(128, 5, padding='same') (x) # 8x8@128
     x = LeakyReLU(0.2) (x)
     
-    x = UpSampling2D((2,2)) (x) # 16x16@128
+    # x = UpSampling2D((2,2)) (x) # 16x16@128
+    x = PixelShuffler() (x) # 16x16@32
     x = Conv2DTranspose(64, 5, padding='same') (x)  # 16x16@64
     x = LeakyReLU(0.2) (x)
     
     x = _res_conv(64, 5, dropout_rate) (x) # 16x16@64
     
-    x = UpSampling2D((2,2)) (x) # 32x32@64
+    # x = UpSampling2D((2,2)) (x) # 32x32@64
+    x = PixelShuffler() (x) # 32x32@16
     x = Conv2DTranspose(32, 5, padding='same') (x)  # 32x32@32
     x = LeakyReLU(0.2) (x)
     
