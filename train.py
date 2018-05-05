@@ -16,6 +16,8 @@ parser.add_argument('--epochs', type=int, default=1000, required=False,
                     help='epochs')
 parser.add_argument('--std', type=float, default=1.0, required=False,
                     help='sampling std')
+parser.add_argument('--no_augmentation', action='store_true', default=False,
+                    help='')
 args = parser.parse_args()
 
 import numpy as np
@@ -37,6 +39,8 @@ from keras.callbacks import Callback
 from skimage.io import imsave
 from tqdm import tqdm
 
+use_data_augmentation = not args.no_augmentation
+
 BS = args.batch_size
 EPOCHS = args.epochs
 w, h, c = args.width, args.height, args.channels
@@ -44,7 +48,7 @@ latent_dim = args.z_dim
 D_ITER = 5
 generator_model, discriminator_model, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, use_vae=False)
 
-train_generator = data_generator(args.dataset, height=h, width=w, channel=c, batch_size=BS, shuffle=True, normalize=False)
+train_generator = data_generator(args.dataset, height=h, width=w, channel=c, batch_size=BS, shuffle=True, normalize=not use_data_augmentation)
 seq = get_imgaug()
 
 if not os.path.exists('./preview'):
@@ -57,8 +61,9 @@ for epoch in range(EPOCHS):
     with tqdm(total=len(train_generator)) as t:
         for i in range(len(train_generator)):
             image_batch, _ = train_generator.__getitem__(i)
-            image_batch = seq.augment_images(image_batch)
-            image_batch = (image_batch.astype(np.float32) - 127.5) / 127.5
+            if use_data_augmentation:
+                image_batch = seq.augment_images(image_batch)
+                image_batch = (image_batch.astype(np.float32) - 127.5) / 127.5
             noise = np.random.normal(0, args.std, (BS, latent_dim)).astype(np.float32)
             msg = ''
             msg += 'DL: {:.2f}, '.format(np.mean(discriminator_model.train_on_batch([image_batch, noise], None)))
