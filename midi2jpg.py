@@ -69,7 +69,7 @@ for filename in os.listdir(prefix):
     while np.sum(sheet_grid[-1,:])==0:
         sheet_grid= np.delete(sheet_grid, -1, 0) ## trim 0
     sheet_grid = np.flip(np.transpose(np.clip(sheet_grid,0,255).astype(np.uint8), (1,0)), 0)
-    for i in range(0, sheet_grid.shape[1]-segLen, segLen//8):
+    for i in range(0, sheet_grid.shape[1]-segLen, segLen): # alignment
         note_ratio = float(np.sum(sheet_grid[:,i:i+segLen]>0)) / float(segLen*60)
         if note_ratio < 0.0005: continue
         im = Image.fromarray(sheet_grid[:,i:i+segLen])
