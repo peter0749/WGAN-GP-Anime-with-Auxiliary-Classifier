@@ -18,6 +18,9 @@ def Tempo2BPM(x):
 prefix = str(sys.argv[1])
 output_dir = str(sys.argv[2])
 
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
 for filename in os.listdir(prefix):
     fullfile = prefix+'/'+str(filename)
     try:
