@@ -12,26 +12,30 @@ import imgaug as ia
 from imgaug import augmenters as iaa
 import numpy as np
 
-def z_interpolation(a, b, n=10):
+def z_interpolation(zs, n=10):
     l = []
-    for x, y in zip(a, b):
-        l.append(np.linspace(x, y, n))
-    return np.asarray(l).transpose((1,0))
+    for i in range(1, len(zs)):
+        t = []
+        for x, y in zip(zs[i-1], zs[i]):
+            t.append(np.linspace(x, y, n))
+        t = np.asarray(t).transpose((1,0))
+        l.extend(t)
+    return np.asarray(l)
     
-def generate_image_interpolation(generator, path, h, w, c, latent_dim, std, nr, nc, nt, batch_size=8):
-    interpolate_noise = np.zeros((nt, nr, nc, latent_dim))
+def generate_image_interpolation(generator, path, h, w, c, latent_dim, std, nr, nc, dt, n, batch_size=8):
+    interpolate_noise = np.zeros(((n-1)*dt, nr, nc, latent_dim))
     for ri in range(nr):
         for ci in range(nc):
-            z_0, z_1 = np.random.normal(0, std, (2, latent_dim))
-            z_t = z_interpolation(z_0, z_1, nt) # shape: (nt, latent_dim)
+            zs  = np.random.normal(0, std, (n, latent_dim))
+            z_t = z_interpolation(zs, dt) # shape: (nt, latent_dim)
             interpolate_noise[:, ri, ci, :] = z_t
-    gs = generator.predict(interpolate_noise.reshape(-1, latent_dim), batch_size=batch_size).reshape(nt, nr, nc, h, w, c)
     
-    for t in range(nt):
+    for t in range((n-1)*dt):
         figure = np.zeros((h * nr, w * nc, c))
+        gs = generator.predict(interpolate_noise[t].reshape(-1, latent_dim), batch_size=batch_size).reshape(nr, nc, h, w, c)
         for ri in range(nr):
             for ci in range(nc):
-                figure[h*ri:h*(ri+1), w*ci:w*(ci+1)] = gs[t, ri, ci]
+                figure[h*ri:h*(ri+1), w*ci:w*(ci+1)] = gs[ri, ci]
         figure = np.squeeze(np.clip(figure * 127.5 + 127.5, 0, 255).astype(np.uint8))
         imsave(os.path.join(path, 't_{:02d}.jpg'.format(t)), figure)
 
