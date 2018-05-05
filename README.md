@@ -1,4 +1,4 @@
-# VAE-GAN-Anime
+# WGAN-GP Anime face generation
 
 ![first look](generated_anime_faces_k_4x4/output_0000.png) ![second look](generated_anime_faces_k_4x4/output_0022.png) ![](generated_anime_faces_k_4x4/output_0001.png) ![](generated_anime_faces_k_4x4/output_0002.png)
 
