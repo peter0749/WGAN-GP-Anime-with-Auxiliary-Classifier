@@ -1,5 +1,7 @@
 # VAE-GAN-Anime
 
+![first look](generated_anime_faces_k_4x4/output_0000.png) ![second look](generated_anime_faces_k_4x4/output_0022.png)
+
 Demos:
 
 Interpolation in latent space:
