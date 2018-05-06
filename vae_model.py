@@ -377,14 +377,14 @@ def build_cyclewgan(h=128, w=128, c_A=3, c_B=3, epsilon_std=1.0, dropout_rate=0.
     discriminator_B_layers_for_generator_B = discriminator_B(generator_BA_layers)# if B->A->B looks like B
     
     generator_A_model = Model(inputs=[generator_A_input], outputs=[discriminator_B_layers_for_generator_A, discriminator_A_layers_for_generator_A])
-    generator_A_model.add_loss(K.mean(discriminator_B_layers_for_generator_A), inputs=[generator_A_layers])
+    generator_A_model.add_loss(K.mean(discriminator_B_layers_for_generator_A), inputs=[generator_A])
     generator_A_model.add_loss(K.mean(discriminator_A_layers_for_generator_A))
     generator_A_model.add_loss(cyclic_loss_w*K.mean(K.abs(generator_A_input - generator_AB_layers)))
     # generator_A_model.add_loss(K.mean(discriminator_B_layers_for_generator_A) + K.mean(discriminator_A_layers_for_generator_A) + cyclic_loss_w*K.mean(K.abs(generator_A_input - generator_AB_layers)))
     generator_A_model.compile(optimizer=optimizer_gA, loss=None)
     
     generator_B_model = Model(inputs=[generator_B_input], outputs=[discriminator_A_layers_for_generator_B, discriminator_B_layers_for_generator_B])
-    generator_B_model.add_loss(K.mean(discriminator_A_layers_for_generator_B), inputs=[generator_B_layers])
+    generator_B_model.add_loss(K.mean(discriminator_A_layers_for_generator_B), inputs=[generator_B])
     generator_B_model.add_loss(K.mean(discriminator_B_layers_for_generator_B))
     generator_B_model.add_loss(cyclic_loss_w*K.mean(K.abs(generator_B_input - generator_BA_layers)))
     #generator_B_model.add_loss(K.mean(discriminator_A_layers_for_generator_B) + K.mean(discriminator_B_layers_for_generator_B) + cyclic_loss_w*K.mean(K.abs(generator_B_input - generator_BA_layers)))
