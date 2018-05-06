@@ -79,7 +79,7 @@ for epoch in range(EPOCHS):
                 d_counter = 0
             t.set_description(msg)
             t.update()
-    generate_images_cyclegan(generator_A, generator_B, image_batch_A[0], image_batch_B[0], './preview', h, w, c_A, c_B, epoch)
+    generate_images_cyclegan(generator_A, generator_B, train_generator_A.__getitem__(0)[0], train_generator_B.__getitem__(0)[0], './preview', h, w, c_A, c_B, epoch)
     generator_A.save('./generator_A.h5')
     generator_B.save('./generator_B.h5')
     discriminator_A.save('./discriminator_A.h5')
