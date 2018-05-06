@@ -21,7 +21,7 @@ parser.add_argument('output', metavar='output', type=str, help='')
 parser.add_argument('--model', type=str, default='./decoder.h5', required=False, help='model')
 parser.add_argument('--n' , type=int, default=9, required=False, help='Interpolation points')
 parser.add_argument('--dt', type=int, default=12, required=False, help='Interpolation steps')
-parser.add_argument('--std', type=float, default=0.6, required=False, help='')
+parser.add_argument('--std', type=float, default=0.7, required=False, help='')
 parser.add_argument('--batch_size', type=int, default=8, required=False, help='')
 args = parser.parse_args()
 

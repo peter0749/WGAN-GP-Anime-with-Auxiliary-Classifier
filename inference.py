@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser(description='Image Generation with VAE/GAN')
 parser.add_argument('output', metavar='output', type=str, help='')
 parser.add_argument('--model', type=str, default='./decoder.h5', required=False, help='model')
 parser.add_argument('--n', type=int, default=64, required=False, help='')
-parser.add_argument('--std', type=float, default=1.0, required=False, help='')
+parser.add_argument('--std', type=float, default=0.7, required=False, help='')
 parser.add_argument('--batch_size', type=int, default=8, required=False, help='')
 args = parser.parse_args()
 
