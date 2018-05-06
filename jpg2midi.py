@@ -11,7 +11,7 @@ piano_roll = np.array(Image.open(input_path))
 piano_roll = np.transpose(np.flip(piano_roll, 0), (1,0))
 piano_roll = np.lib.pad(piano_roll, ((0,1),(0,1)), 'constant', constant_values=((0,0),(0,0)))
 # plt.imshow(piano_roll, cmap='gray')
-piano_roll[piano_roll<100] = 0
+piano_roll[piano_roll<130] = 0
 piano_roll[piano_roll>0] = 255
 
 pattern = midi.Pattern(resolution=4)
