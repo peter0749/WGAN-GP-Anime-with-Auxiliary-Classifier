@@ -13,4 +13,4 @@ Training:
 
 It can even generate MIDI loops!!
 
-[![midi](https://img.youtube.com/vi/AX2lXaEue0Y/maxresdefault.jpg)](https://www.youtube.com/watch?v=AX2lXaEue0Y)
+[![midi](https://img.youtube.com/vi/AX2lXaEue0Y/0.jpg)](https://www.youtube.com/watch?v=AX2lXaEue0Y)
