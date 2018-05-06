@@ -45,7 +45,7 @@ BS = args.batch_size
 EPOCHS = args.epochs
 w, h, c_A, c_B = args.width, args.height, args.channels_A, args.channels_B
 D_ITER = 5
-generator_A_model, generator_B_model, discriminator_A_model, discriminator_B_model, generator_A, generator_B, discriminator_A, discriminator_B = build_cyclewgan(h=h, w=w, c_A=c_A, c_B=c_B, batch_size=BS, dropout_rate=0.2)
+generator_model, discriminator_A_model, discriminator_B_model, generator_A, generator_B, discriminator_A, discriminator_B = build_cyclewgan(h=h, w=w, c_A=c_A, c_B=c_B, batch_size=BS, dropout_rate=0.2)
 
 train_generator_A = data_generator(args.dataset_A, height=h, width=w, channel=c_A, batch_size=BS, shuffle=True, normalize=not use_data_augmentation)
 train_generator_B = data_generator(args.dataset_B, height=h, width=w, channel=c_B, batch_size=BS, shuffle=True, normalize=not use_data_augmentation)
@@ -74,8 +74,7 @@ for epoch in range(EPOCHS):
             msg += 'DL_B: {:.2f}, '.format(np.mean(discriminator_B_model.train_on_batch([image_batch_B, image_batch_A], None)))
             d_counter += 1
             if d_counter==D_ITER:
-                msg += 'GL_A: {:.2f}, '.format(np.mean(generator_A_model.train_on_batch(image_batch_A, None))) # train A->B
-                msg += 'GL_B: {:.2f}, '.format(np.mean(generator_B_model.train_on_batch(image_batch_B, None))) # train B->A
+                msg += 'GL: {:.2f}, '.format(np.mean(generator_model.train_on_batch([image_batch_A, image_batch_B], None))) # train A->B, B->A
                 d_counter = 0
             t.set_description(msg)
             t.update()
