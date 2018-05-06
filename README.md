@@ -10,3 +10,7 @@ Interpolation in latent space:
 
 Training:
 [![training](https://img.youtube.com/vi/baVH8FApHDY/maxresdefault.jpg)](https://www.youtube.com/watch?v=baVH8FApHDY)
+
+It can even generate MIDI loops!!
+
+[![midi](https://img.youtube.com/vi/AX2lXaEue0Y/maxresdefault.jpg)](https://www.youtube.com/watch?v=AX2lXaEue0Y)
