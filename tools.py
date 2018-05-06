@@ -163,6 +163,14 @@ def generate_images(generator, path, h, w, c, latent_dim, std, nr, nc, epoch, ba
     imsave(os.path.join(path, 'epoch_{:02d}.jpg'.format(epoch)), figure)
     generator.save(os.path.join(path, 'weights_{:02d}.h5'.format(epoch)))
 
+def generate_images_cyclegan(generator_A, generator_B, img_A, img_B, path, h, w, c_A, c_B, epochs):
+    img_A2B = generator_A.predict([img_A], verbose=0, batch_size=1)[0]
+    img_B2A = generator_B.predict([img_B], verbose=0, batch_size=1)[0]
+    imsave(os.path.join(path, 'epoch_{:02d}_A.jpg'.format(epoch)), img_A)
+    imsave(os.path.join(path, 'epoch_{:02d}_B.jpg'.format(epoch)), img_B)
+    imsave(os.path.join(path, 'epoch_{:02d}_A2B.jpg'.format(epoch)), img_A2B)
+    imsave(os.path.join(path, 'epoch_{:02d}_B2A.jpg'.format(epoch)), img_B2A)
+
 class Preview(Callback):
     def __init__(self, decoder, path, h, w, c=3, latent_dim=2, nr=15, nc=15, std=1.0, batch_size=1, save_weights=True):
         self.nr = nr
