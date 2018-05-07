@@ -91,22 +91,25 @@ def residual_discriminator(h=128, w=128, c=3, k=4, dropout_rate=0.1):
     x = Dropout(dropout_rate) (x)
     
     # block 2:
+    # x = _res_conv(128, k, dropout_rate) (x) # 16x16@128
     x = conv(128, k, 2, pad='same') (x) # 8x8@128
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 3:
-    x = conv(256, k, 2) (x) # 4x4@256
-    x = LeakyReLU(0.2) (x)
-    x = Dropout(dropout_rate) (x)
-    
-    # block 3:
-    x = conv(256, k, 2) (x) # 2x2@256
+    # x = _res_conv(128, k, dropout_rate) (x) # 8x8@128
+    x = conv(128, k, 2) (x) # 4x4@128
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 4:
-    x = _res_conv(512, k, dropout_rate) (x) # 2x2@512
+    x = _res_conv(256, k, dropout_rate) (x) # 4x4@256
+    x = conv(256, k, 2) (x) # 2x2@256
+    x = LeakyReLU(0.2) (x)
+    x = Dropout(dropout_rate) (x)
+    
+    # block 5 (transform block):
+    # x = _res_conv(512, k, dropout_rate) (x) # 2x2@512
     
     hidden = Flatten() (x) # 2*2*512
     
@@ -127,21 +130,24 @@ def residual_encoder(h=128, w=128, c=3, k=4, latent_dim=2, epsilon_std=1.0, drop
     x = Dropout(dropout_rate) (x)
     
     # block 2:
+    x = _res_conv(128, k, dropout_rate) (x) # 16x16@128
     x = conv(128, k, 2, pad='same') (x) # 8x8@128
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
     # block 3:
+    x = _res_conv(256, k, dropout_rate) (x) # 8x8@256
     x = conv(256, k, 2) (x) # 4x4@256
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
-    # block 3:
+    # block 4:
+    x = _res_conv(256, k, dropout_rate) (x) # 4x4@256
     x = conv(256, k, 2) (x) # 2x2@256
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
-    # block 4:
+    # block 5 (transform block):
     x = _res_conv(512, k, dropout_rate) (x) # 2x2@512
     
     hidden = Flatten() (x) # 2*2*512
@@ -166,31 +172,35 @@ def residual_decoder(h, w, c=3, k=4, latent_dim=2, dropout_rate=0.1):
     x = reshape # 2x2@512
     x = Dropout(dropout_rate) (x) # prevent overfitting
     
+    # block 6:
     x = UpSampling2D((2,2)) (x) # 4x4@512
     # x = PixelShuffler() (x) # 4x4@128
     x = Conv2DTranspose(128, k, padding='same') (x) # 4x4@128
     x = LeakyReLU(0.2) (x)
+    x = _res_conv(128, k, dropout_rate) (x) # 4x4@128
     
+    # block 7:
     x = UpSampling2D((2,2)) (x) # 8x8@128
     # x = PixelShuffler() (x) # 8x8@32
     x = Conv2DTranspose(128, k, padding='same') (x) # 8x8@128
     x = LeakyReLU(0.2) (x)
+    x = _res_conv(128, k, dropout_rate) (x) # 8x8@128
     
+    # block 8:
     x = UpSampling2D((2,2)) (x) # 16x16@128
     # x = PixelShuffler() (x) # 16x16@32
     x = Conv2DTranspose(64, k, padding='same') (x)  # 16x16@64
     x = LeakyReLU(0.2) (x)
-    
     x = _res_conv(64, k, dropout_rate) (x) # 16x16@64
     
+    # block 9:
     # x = UpSampling2D((2,2)) (x) # 32x32@64
     x = PixelShuffler() (x) # 32x32@16
     x = Conv2DTranspose(32, k, padding='same') (x)  # 32x32@32
     x = LeakyReLU(0.2) (x)
-    
     x = _res_conv(32, k, dropout_rate) (x) # 32x32@32
     
-    outputs = Conv2DTranspose(c, k, padding='same', activation='tanh') (x) # 32x32@c
+    outputs = conv(c, k, 1, act='tanh') (x) # 32x32@c
 
     model = Model([inputs_], [outputs])
     return model
@@ -218,35 +228,36 @@ def residual_ae(h=128, w=128, c_in=3, c_out=3, k=4, dropout_rate=0.1):
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
-    # block 3:
+    # block 4:
     x = _res_conv(256, k, dropout_rate) (x) # 4x4@256
     x = conv(256, k, 2) (x) # 2x2@256
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
-    # block 4:
+    # block 5 (transform block):
+    x = _res_conv(512, k, dropout_rate) (x) # 2x2@512
     x = _res_conv(512, k, dropout_rate) (x) # 2x2@512
     x = _res_conv(512, k, dropout_rate) (x) # 2x2@512
     
-    # block 5:
+    # block 6:
     x = UpSampling2D((2,2)) (x) # 4x4@512
     # x = PixelShuffler() (x) # 4x4@128
     x = Conv2DTranspose(128, k, padding='same') (x) # 4x4@128
     x = LeakyReLU(0.2) (x)
+    x = _res_conv(128, k, dropout_rate) (x) # 4x4@128
     
-    # block 6:
+    # block 7:
     x = UpSampling2D((2,2)) (x) # 8x8@128
     # x = PixelShuffler() (x) # 8x8@32
     x = Conv2DTranspose(128, k, padding='same') (x) # 8x8@128
     x = LeakyReLU(0.2) (x)
+    x = _res_conv(128, k, dropout_rate) (x) # 8x8@128
     
-    # block 7:
+    # block 8:
     x = UpSampling2D((2,2)) (x) # 16x16@128
     # x = PixelShuffler() (x) # 16x16@32
     x = Conv2DTranspose(64, k, padding='same') (x)  # 16x16@64
     x = LeakyReLU(0.2) (x)
-    
-    # block 8:
     x = _res_conv(64, k, dropout_rate) (x) # 16x16@64
     
     # block 9:
@@ -254,11 +265,9 @@ def residual_ae(h=128, w=128, c_in=3, c_out=3, k=4, dropout_rate=0.1):
     x = PixelShuffler() (x) # 32x32@16
     x = Conv2DTranspose(32, k, padding='same') (x)  # 32x32@32
     x = LeakyReLU(0.2) (x)
-    
-    # block 10:
     x = _res_conv(32, k, dropout_rate) (x) # 32x32@32
     
-    outputs = Conv2DTranspose(c_out, k, padding='same', activation='tanh') (x) # 32x32@c
+    outputs = conv(c_out, k, 1, act='tanh') (x) # 32x32@c
     return Model([inputs], [outputs])
 
 def build_residual_vae(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate=0.1):
@@ -432,7 +441,6 @@ def build_cyclewgan(h=128, w=128, c_A=3, c_B=3, epsilon_std=1.0, dropout_rate=0.
     return generator_model, discriminator_A_model, discriminator_B_model, generator_A, generator_B, discriminator_A, discriminator_B
 
 if __name__ == '__main__':
-    vae, encoder, decoder = build_residual_vae(h=96, w=96, c=3, latent_dim=100, dropout_rate=0.2)
-    vae.summary()
-    encoder.summary()
-    decoder.summary()
+    residual_ae(256, 256, 3, 3).summary()
+    residual_discriminator(256, 256, 3).summary()
+    residual_decoder(16, 16, 3).summary()
