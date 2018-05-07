@@ -10,11 +10,11 @@ import keras
 from keras import backend as K
 K.set_session(session)
 from keras.models import *
-from vae_model import build_residual_vae
+from vae_model import up_bilinear
 from skimage.io import imsave, imread
 from skimage.color import gray2rgb
 from glob import glob
-from pixel_shuffler import PixelShuffler, up_bilinear
+from pixel_shuffler import PixelShuffler
 from tqdm import tqdm
 import argparse
 
