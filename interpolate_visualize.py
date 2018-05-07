@@ -30,5 +30,5 @@ args = parser.parse_args()
 if not os.path.exists(args.output):
     os.makedirs(args.output)
 
-model = load_model(args.model, custom_objects={'PixelShuffler':PixelShuffler, 'up_bilinear':up_bilinear})
+model = load_model(args.model, custom_objects={'tf':tf, 'PixelShuffler':PixelShuffler, 'up_bilinear':up_bilinear})
 generate_image_interpolation(model, args.output, *model.output_shape[-3:], model.input_shape[-1], args.std, args.nr, args.nc, args.dt, args.n, batch_size=args.batch_size)

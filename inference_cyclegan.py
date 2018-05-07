@@ -27,7 +27,7 @@ args = parser.parse_args()
 if not os.path.exists(args.output):
     os.makedirs(args.output)
 
-model = load_model(args.model, custom_objects={'PixelShuffler':PixelShuffler, 'up_bilinear':up_bilinear})
+model = load_model(args.model, custom_objects={'tf':tf, 'PixelShuffler':PixelShuffler, 'up_bilinear':up_bilinear})
 
 paths = glob(args.input+'/*.jpg')
 paths.extend(glob(args.input+'/*.png'))

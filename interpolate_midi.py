@@ -25,7 +25,7 @@ parser.add_argument('--std', type=float, default=0.7, required=False, help='')
 parser.add_argument('--batch_size', type=int, default=8, required=False, help='')
 args = parser.parse_args()
 
-model = load_model(args.model, custom_objects={'PixelShuffler':PixelShuffler, 'up_bilinear':up_bilinear})
+model = load_model(args.model, custom_objects={'tf':tf, 'PixelShuffler':PixelShuffler, 'up_bilinear':up_bilinear})
 zs = np.random.normal(0, args.std, (args.n, model.input_shape[-1]))
 zs = z_interpolation(zs, args.dt)
 gs = np.squeeze(np.round(model.predict(zs, batch_size=args.batch_size, verbose=1) * 127.5 + 127.5).astype(np.uint8)) # t, h, w

@@ -26,7 +26,7 @@ args = parser.parse_args()
 if not os.path.exists(args.output):
     os.makedirs(args.output)
 
-model = load_model(args.model, custom_objects={'PixelShuffler':PixelShuffler, 'up_bilinear':up_bilinear})
+model = load_model(args.model, custom_objects={'tf':tf, 'PixelShuffler':PixelShuffler, 'up_bilinear':up_bilinear})
 m = (model.predict(np.random.normal(0, args.std, (args.n, model.input_shape[-1])), batch_size=args.batch_size) * 127.5 + 127.5).astype(np.uint8)
 
 for i in range(args.n):
