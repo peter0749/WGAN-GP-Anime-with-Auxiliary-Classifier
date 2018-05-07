@@ -4,6 +4,8 @@ parser.add_argument('--dataset_A', type=str, required=True,
                     help='path to dataset A')
 parser.add_argument('--dataset_B', type=str, required=True,
                     help='path to dataset B')
+parser.add_argument('--load_weights', action='store_true', default=False,
+                    help='continue training')
 parser.add_argument('--width', type=int, default=96, required=False,
                     help='width')
 parser.add_argument('--height', type=int, default=96, required=False,
@@ -46,6 +48,12 @@ EPOCHS = args.epochs
 w, h, c_A, c_B = args.width, args.height, args.channels_A, args.channels_B
 D_ITER = 5
 generator_model, discriminator_A_model, discriminator_B_model, generator_A, generator_B, discriminator_A, discriminator_B = build_cyclewgan(h=h, w=w, c_A=c_A, c_B=c_B, batch_size=BS, dropout_rate=0.2)
+
+if args.load_weights:
+    generator_A.load_weights('./generator_A.h5')
+    generator_B.load_weights('./generator_B.h5')
+    discriminator_A.load_weights('./discriminator_A.h5')
+    discriminator_B.load_weights('./discriminator_B.h5')
 
 train_generator_A = data_generator(args.dataset_A, height=h, width=w, channel=c_A, batch_size=BS, shuffle=True, normalize=not use_data_augmentation)
 train_generator_B = data_generator(args.dataset_B, height=h, width=w, channel=c_B, batch_size=BS, shuffle=True, normalize=not use_data_augmentation)

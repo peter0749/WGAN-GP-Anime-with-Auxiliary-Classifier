@@ -2,6 +2,8 @@ import argparse
 parser = argparse.ArgumentParser(description='WGAN-GP')
 parser.add_argument('--dataset', type=str, required=True,
                     help='path to dataset')
+parser.add_argument('--load_weights', action='store_true', default=False,
+                    help='continue training')
 parser.add_argument('--width', type=int, default=96, required=False,
                     help='width')
 parser.add_argument('--height', type=int, default=96, required=False,
@@ -50,6 +52,10 @@ generator_model, discriminator_model, decoder, discriminator = build_vae_gan(h=h
 
 train_generator = data_generator(args.dataset, height=h, width=w, channel=c, batch_size=BS, shuffle=True, normalize=not use_data_augmentation)
 seq = get_imgaug()
+
+if args.load_weights:
+    decoder.load_weights('./decoder.h5')
+    discriminator.load_weights('./discriminator.h5')
 
 if not os.path.exists('./preview'):
     os.makedirs('./preview')
