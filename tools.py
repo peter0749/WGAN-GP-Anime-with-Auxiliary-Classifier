@@ -65,11 +65,11 @@ def get_imgaug():
             # don't execute all of them, as that would often be way too strong
             iaa.SomeOf((0, 3),
                 [
-                    iaa.Add((-3, 3), per_channel=0.5), # change brightness of images (by -10 to 10 of original value)
-                    iaa.AddToHueAndSaturation((-3, 3)), # change hue and saturation
+                    iaa.Add((-2, 2), per_channel=0.5), # change brightness of images (by -10 to 10 of original value)
+                    iaa.AddToHueAndSaturation((-2, 2)), # change hue and saturation
                     # either change the brightness of the whole image (sometimes
                     # per channel) or change the brightness of subareas
-                    iaa.Multiply((0.95, 1.05), per_channel=0.5)
+                    iaa.Multiply((0.99, 1.01), per_channel=0.5)
                 ],
                 random_order=True
             )
@@ -152,7 +152,7 @@ class data_generator(Sequence):
             x_batch[n] = np.clip((img.astype(np.float32)-127.5) / 127.5, -1, 1) if self.normalize else img[...,:self.c]
         return x_batch, None
 
-def generate_images(generator, path, h, w, c, latent_dim, std, nr, nc, epoch, batch_size=1):
+def generate_images(generator, path, h, w, c, latent_dim, std, nr, nc, iteration, batch_size=1):
     noise = np.random.normal(0, std, (nr*nc, latent_dim))
     generated = generator.predict(noise, batch_size=batch_size, verbose=0)
     figure = np.zeros((h * nr, w * nc, c))
@@ -160,16 +160,18 @@ def generate_images(generator, path, h, w, c, latent_dim, std, nr, nc, epoch, ba
         for ci in range(nc):
             figure[h*ri:h*(ri+1), w*ci:w*(ci+1)] = generated[ri*nc+ci]
     figure = np.squeeze(np.clip(figure * 127.5 + 127.5, 0, 255).astype(np.uint8))
-    imsave(os.path.join(path, 'epoch_{:02d}.jpg'.format(epoch)), figure)
-    generator.save(os.path.join(path, 'weights_{:02d}.h5'.format(epoch)))
+    imsave(os.path.join(path, 'ite_{:02d}.jpg'.format(iteration)), figure)
+    generator.save(os.path.join(path, 'weights_ite_{:02d}.h5'.format(iteration)))
 
-def generate_images_cyclegan(generator_A, generator_B, img_A, img_B, path, h, w, c_A, c_B, epoch):
+def generate_images_cyclegan(generator_A, generator_B, img_A, img_B, path, h, w, c_A, c_B, iteration):
     img_A2B = generator_A.predict(img_A[np.newaxis,...], verbose=0, batch_size=1)[0]
     img_B2A = generator_B.predict(img_B[np.newaxis,...], verbose=0, batch_size=1)[0]
-    imsave(os.path.join(path, 'epoch_{:02d}_A.jpg'.format(epoch)), np.round(img_A*127.5+127.5).astype(np.uint8))
-    imsave(os.path.join(path, 'epoch_{:02d}_B.jpg'.format(epoch)), np.round(img_B*127.5+127.5).astype(np.uint8))
-    imsave(os.path.join(path, 'epoch_{:02d}_A2B.jpg'.format(epoch)), np.round(img_A2B*127.5+127.5).astype(np.uint8))
-    imsave(os.path.join(path, 'epoch_{:02d}_B2A.jpg'.format(epoch)), np.round(img_B2A*127.5+127.5).astype(np.uint8))
+    imsave(os.path.join(path, 'ite_{:02d}_A.jpg'.format(iteration)), np.round(img_A*127.5+127.5).astype(np.uint8))
+    imsave(os.path.join(path, 'ite_{:02d}_B.jpg'.format(iteration)), np.round(img_B*127.5+127.5).astype(np.uint8))
+    imsave(os.path.join(path, 'ite_{:02d}_A2B.jpg'.format(iteration)), np.round(img_A2B*127.5+127.5).astype(np.uint8))
+    imsave(os.path.join(path, 'ite_{:02d}_B2A.jpg'.format(iteration)), np.round(img_B2A*127.5+127.5).astype(np.uint8))
+    generator_A.save(os.path.join(path, 'generator_A_ite_{:02d}.h5'.format(iteration)))
+    generator_B.save(os.path.join(path, 'generator_B_ite_{:02d}.h5'.format(iteration)))
 
 class Preview(Callback):
     def __init__(self, decoder, path, h, w, c=3, latent_dim=2, nr=15, nc=15, std=1.0, batch_size=1, save_weights=True):

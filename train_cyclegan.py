@@ -18,6 +18,8 @@ parser.add_argument('--batch_size', type=int, default=8, required=False,
                     help='batch size')
 parser.add_argument('--epochs', type=int, default=1000, required=False,
                     help='epochs')
+parser.add_argument('--preview_iteration', type=int, default=500, required=False,
+                    help='preview_iteration')
 parser.add_argument('--no_augmentation', action='store_true', default=False,
                     help='')
 args = parser.parse_args()
@@ -63,6 +65,7 @@ if not os.path.exists('./preview'):
     os.makedirs('./preview')
 
 d_counter = 0
+preview_t = 0
 for epoch in range(EPOCHS):
     print("Epoch: %d / %d"%(epoch+1, EPOCHS))
     train_generator_A.random_shuffle()
@@ -86,7 +89,9 @@ for epoch in range(EPOCHS):
                 d_counter = 0
             t.set_description(msg)
             t.update()
-    generate_images_cyclegan(generator_A, generator_B, image_batch_A[0], image_batch_B[0], './preview', h, w, c_A, c_B, epoch)
+            if preview_t % args.preview_iteration == 0:
+                generate_images_cyclegan(generator_A, generator_B, image_batch_A[0], image_batch_B[0], './preview', h, w, c_A, c_B, preview_t)
+            preview_t += 1
     generator_A.save('./generator_A.h5')
     generator_B.save('./generator_B.h5')
     discriminator_A.save('./discriminator_A.h5')

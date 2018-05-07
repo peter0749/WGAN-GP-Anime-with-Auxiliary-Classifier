@@ -42,6 +42,7 @@ if not os.path.exists('./preview'):
     os.makedirs('./preview')
 
 d_counter = 0
+i_counter = 0
 for epoch in range(EPOCHS):
     print("Epoch: %d / %d"%(epoch+1, EPOCHS))
     np.random.shuffle(x_train)
@@ -59,6 +60,8 @@ for epoch in range(EPOCHS):
                 d_counter = 0
             t.set_description(msg)
             t.update()
-    generate_images(decoder, './preview', h, w, c, latent_dim, args.std, 15, 15, epoch, BS)
+            if i_counter % 500 == 0:
+                generate_images(decoder, './preview', h, w, c, latent_dim, args.std, 15, 15, i_counter, BS)
+            i_counter += 1
     decoder.save('./decoder.h5')
     discriminator.save('./discriminator.h5')
