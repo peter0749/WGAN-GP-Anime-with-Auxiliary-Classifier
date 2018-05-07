@@ -78,6 +78,13 @@ def _res_conv(f, k=3, dropout=0.1): # very simple residual module
         return out
     return block
 
+def up_bilinear():
+    def block(x):
+        h, w = K.int_shape(x)[-3:-1] 
+        x = Lambda(lambda img: tf.image.resize_bilinear(img, (h*2, w*2), align_corners=True)) (x)
+        return x
+    return block
+
 def residual_discriminator(h=128, w=128, c=3, k=4, dropout_rate=0.1):
 
     inputs = Input(shape=(h,w,c)) # 32x32@c
@@ -173,28 +180,28 @@ def residual_decoder(h, w, c=3, k=4, latent_dim=2, dropout_rate=0.1):
     x = Dropout(dropout_rate) (x) # prevent overfitting
     
     # block 6:
-    x = UpSampling2D((2,2)) (x) # 4x4@512
+    x = up_bilinear() (x) # 4x4@512
     # x = PixelShuffler() (x) # 4x4@128
     x = Conv2DTranspose(128, k, padding='same') (x) # 4x4@128
     x = LeakyReLU(0.2) (x)
     x = _res_conv(128, k, dropout_rate) (x) # 4x4@128
     
     # block 7:
-    x = UpSampling2D((2,2)) (x) # 8x8@128
+    x = up_bilinear() (x) # 8x8@128
     # x = PixelShuffler() (x) # 8x8@32
     x = Conv2DTranspose(128, k, padding='same') (x) # 8x8@128
     x = LeakyReLU(0.2) (x)
     x = _res_conv(128, k, dropout_rate) (x) # 8x8@128
     
     # block 8:
-    x = UpSampling2D((2,2)) (x) # 16x16@128
+    x = up_bilinear() (x) # 16x16@128
     # x = PixelShuffler() (x) # 16x16@32
     x = Conv2DTranspose(64, k, padding='same') (x)  # 16x16@64
     x = LeakyReLU(0.2) (x)
     x = _res_conv(64, k, dropout_rate) (x) # 16x16@64
     
     # block 9:
-    # x = UpSampling2D((2,2)) (x) # 32x32@64
+    # x = up_bilinear() (x) # 32x32@64
     x = PixelShuffler() (x) # 32x32@16
     x = Conv2DTranspose(32, k, padding='same') (x)  # 32x32@32
     x = LeakyReLU(0.2) (x)
@@ -240,28 +247,28 @@ def residual_ae(h=128, w=128, c_in=3, c_out=3, k=4, dropout_rate=0.1):
     x = _res_conv(512, k, dropout_rate) (x) # 2x2@512
     
     # block 6:
-    x = UpSampling2D((2,2)) (x) # 4x4@512
+    x = up_bilinear() (x) # 4x4@512
     # x = PixelShuffler() (x) # 4x4@128
     x = Conv2DTranspose(128, k, padding='same') (x) # 4x4@128
     x = LeakyReLU(0.2) (x)
     x = _res_conv(128, k, dropout_rate) (x) # 4x4@128
     
     # block 7:
-    x = UpSampling2D((2,2)) (x) # 8x8@128
+    x = up_bilinear() (x) # 8x8@128
     # x = PixelShuffler() (x) # 8x8@32
     x = Conv2DTranspose(128, k, padding='same') (x) # 8x8@128
     x = LeakyReLU(0.2) (x)
     x = _res_conv(128, k, dropout_rate) (x) # 8x8@128
     
     # block 8:
-    x = UpSampling2D((2,2)) (x) # 16x16@128
+    x = up_bilinear() (x) # 16x16@128
     # x = PixelShuffler() (x) # 16x16@32
     x = Conv2DTranspose(64, k, padding='same') (x)  # 16x16@64
     x = LeakyReLU(0.2) (x)
     x = _res_conv(64, k, dropout_rate) (x) # 16x16@64
     
     # block 9:
-    # x = UpSampling2D((2,2)) (x) # 32x32@64
+    # x = up_bilinear() (x) # 32x32@64
     x = PixelShuffler() (x) # 32x32@16
     x = Conv2DTranspose(32, k, padding='same') (x)  # 32x32@32
     x = LeakyReLU(0.2) (x)

@@ -14,7 +14,7 @@ from vae_model import build_residual_vae
 from skimage.io import imsave, imread
 from skimage.color import gray2rgb
 from glob import glob
-from pixel_shuffler import PixelShuffler
+from pixel_shuffler import PixelShuffler, up_bilinear
 from tqdm import tqdm
 import argparse
 
@@ -27,7 +27,7 @@ args = parser.parse_args()
 if not os.path.exists(args.output):
     os.makedirs(args.output)
 
-model = load_model(args.model, custom_objects={'PixelShuffler':PixelShuffler})
+model = load_model(args.model, custom_objects={'PixelShuffler':PixelShuffler, 'up_bilinear':up_bilinear})
 
 paths = glob(args.input+'/*.jpg')
 paths.extend(glob(args.input+'/*.png'))

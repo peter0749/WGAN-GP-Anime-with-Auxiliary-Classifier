@@ -12,7 +12,7 @@ K.set_session(session)
 from keras.models import *
 from vae_model import build_residual_vae
 from skimage.io import imsave
-from pixel_shuffler import PixelShuffler
+from pixel_shuffler import PixelShuffler, up_bilinear
 import argparse
 
 parser = argparse.ArgumentParser(description='Image Generation with VAE/GAN')
@@ -26,7 +26,7 @@ args = parser.parse_args()
 if not os.path.exists(args.output):
     os.makedirs(args.output)
 
-model = load_model(args.model, custom_objects={'PixelShuffler':PixelShuffler})
+model = load_model(args.model, custom_objects={'PixelShuffler':PixelShuffler, 'up_bilinear':up_bilinear})
 m = (model.predict(np.random.normal(0, args.std, (args.n, model.input_shape[-1])), batch_size=args.batch_size) * 127.5 + 127.5).astype(np.uint8)
 
 for i in range(args.n):
