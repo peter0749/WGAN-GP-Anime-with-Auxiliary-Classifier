@@ -20,6 +20,8 @@ parser.add_argument('--epochs', type=int, default=1000, required=False,
                     help='epochs')
 parser.add_argument('--preview_iteration', type=int, default=500, required=False,
                     help='preview_iteration')
+parser.add_argument('--cyclic_loss_w', type=float, default=10, required=False,
+                    help='Weight of reconstruction loss')
 parser.add_argument('--no_augmentation', action='store_true', default=False,
                     help='')
 args = parser.parse_args()
@@ -49,7 +51,7 @@ BS = args.batch_size
 EPOCHS = args.epochs
 w, h, c_A, c_B = args.width, args.height, args.channels_A, args.channels_B
 D_ITER = 5
-generator_model, discriminator_A_model, discriminator_B_model, generator_A, generator_B, discriminator_A, discriminator_B = build_cyclewgan(h=h, w=w, c_A=c_A, c_B=c_B, batch_size=BS, dropout_rate=0.2)
+generator_model, discriminator_A_model, discriminator_B_model, generator_A, generator_B, discriminator_A, discriminator_B = build_cyclewgan(h=h, w=w, c_A=c_A, c_B=c_B, batch_size=BS, dropout_rate=0.2, cyclic_loss_w=args.cyclic_loss_w)
 
 if args.load_weights:
     generator_A.load_weights('./generator_A.h5')
