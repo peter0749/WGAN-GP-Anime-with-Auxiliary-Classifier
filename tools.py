@@ -36,7 +36,7 @@ def back_to_z(ref_img, generator, std=1.0, iterations=300, return_img=False):
     
     def eval_loss_and_grads(z):
         """
-        Given input image, z in latent space and an generator model.
+        Given input image, z in latent space and a generator model.
         We want to minimize || ref_img - G(z) ||^2 a.k.a. least square error between ref_img and G(z).
         Which can be formulate in optimization problem below:
         z* = argmin_z || ref_img - G(z) ||^2
