@@ -27,10 +27,11 @@ parser.add_argument('--runs', type=int, default=10, required=False, help='')
 args = parser.parse_args()
 
 model = load_model(args.model, custom_objects={'tf':tf, 'PixelShuffler':PixelShuffler, 'up_bilinear':up_bilinear})
+img = (resize(imread(args.input), model.output_shape[-3:-1], preserve_range=True).astype(np.float32) - 127.5) / 127.5
+z_encoder = back_to_z(model)
 for i in range(args.runs):
     print('Runs: %d / %d'%(i+1, args.runs))
-    img = (resize(imread(args.input), model.output_shape[-3:-1], preserve_range=True).astype(np.float32) - 127.5) / 127.5
-    z, img_reconstruct = back_to_z(img, model, args.std, iterations=args.iterations, return_img=True)
+    z, img_reconstruct = z_encoder.get_z(img, args.std, iterations=args.iterations, return_img=True)
     output_img = np.round(np.concatenate((np.squeeze(img), np.squeeze(img_reconstruct)), axis=1) * 127.5 + 127.5).astype(np.uint8)
     filename, ext = os.path.splitext(args.output)
-    imsave(filename+'_%d'+ext, output_img)
+    imsave(filename+'_%d'%i+ext, output_img)
