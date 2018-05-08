@@ -8,9 +8,79 @@ from skimage.io import imsave
 from skimage.transform import resize
 from skimage.color import gray2rgb
 from keras.datasets import mnist
+import keras.backend as K
+from keras.layers import Input
 import imgaug as ia
+from tqdm import tqdm
 from imgaug import augmenters as iaa
 import numpy as np
+from scipy.optimize import fmin_l_bfgs_b
+
+def back_to_z(ref_img, generator, std=1.0, iterations=300, return_img=False):
+    latent_dim   = generator.input_shape[-1]
+    output_shape = generator.output_shape[-3:]
+    def ops():
+        z = K.placeholder((1, latent_dim)) # (1, laten_dim)
+        img = K.variable(ref_img.reshape((1, *output_shape))) # (1, h, w, channel)
+        G_in = Input(tensor=z, batch_shape=(1, latent_dim))
+        G_out = generator(G_in) # Output of G(z) (a tensor)
+        loss = K.mean(K.square(img - G_out))
+        grads = K.gradients(loss, z) # compute loss, gradients given G, img and z
+        outputs = [loss]
+        if isinstance(grads, (list, tuple)):
+            outputs += grads
+        else:
+            outputs.append(grads)
+        return K.function([z], outputs) # return a operation
+    z_loss_grad = ops() # get operation
+    
+    def eval_loss_and_grads(z):
+        """
+        Given input image, z in latent space and an generator model.
+        We want to minimize || ref_img - G(z) ||^2 a.k.a. least square error between ref_img and G(z).
+        Which can be formulate in optimization problem below:
+        z* = argmin_z || ref_img - G(z) ||^2
+        """
+        z = z.reshape((1, latent_dim))
+        outs = z_loss_grad([z])
+        loss_value = outs[0]
+        if len(outs[1:]) == 1:
+            grad_values = outs[1].flatten().astype('float64')
+        else:
+            grad_values = np.array(outs[1:]).flatten().astype('float64')
+        return loss_value, grad_values
+    
+    # Refence from: https://github.com/keras-team/keras/blob/master/examples/neural_style_transfer.py
+    # this Evaluator class makes it possible
+    # to compute loss and gradients in one pass
+    # while retrieving them via two separate functions,
+    # "loss" and "grads". This is done because scipy.optimize
+    # requires separate functions for loss and gradients,
+    # but computing them separately would be inefficient.
+    class Evaluator(object):
+    
+        def __init__(self):
+            self.loss_value = None
+            self.grads_values = None
+
+        def loss(self, x):
+            assert self.loss_value is None
+            loss_value, grad_values = eval_loss_and_grads(x)
+            self.loss_value = loss_value
+            self.grad_values = grad_values
+            return self.loss_value
+    
+        def grads(self, x):
+            assert self.loss_value is not None
+            grad_values = np.copy(self.grad_values)
+            self.loss_value = None
+            self.grad_values = None
+            return grad_values
+    evaluator = Evaluator()
+    z = np.random.normal(0, std, latent_dim) # initial guess
+    for i in tqdm(range(iterations), total=iterations):
+        z, min_val, info = fmin_l_bfgs_b(evaluator.loss, z.flatten(), fprime=evaluator.grads, maxfun=20)
+    return (z, generator.predict(z.reshape(1, latent_dim), verbose=0, batch_size=1)) if return_img else z
 
 def z_interpolation(zs, n=10):
     l = []
