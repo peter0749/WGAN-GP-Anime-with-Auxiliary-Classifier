@@ -28,5 +28,5 @@ args = parser.parse_args()
 model = load_model(args.model, custom_objects={'tf':tf, 'PixelShuffler':PixelShuffler, 'up_bilinear':up_bilinear})
 img = (resize(imread(args.input), model.output_shape[-3:-1], preserve_range=True).astype(np.float32) - 127.5) / 127.5
 z, img_reconstruct = back_to_z(img, model, args.std, iterations=args.iterations, return_img=True)
-output_img = np.round(np.concatenate(np.squeeze(img), np.squeeze(img_reconstruct), axis=1) * 127.5 + 127.5).astype(np.uint8)
+output_img = np.round(np.concatenate((np.squeeze(img), np.squeeze(img_reconstruct)), axis=1) * 127.5 + 127.5).astype(np.uint8)
 imsave(args.output, output_img)
