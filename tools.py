@@ -13,6 +13,7 @@ from keras.layers import Input
 import imgaug as ia
 from tqdm import tqdm
 from imgaug import augmenters as iaa
+from keras.utils import to_categorical
 import numpy as np
 from scipy.optimize import fmin_l_bfgs_b
 
@@ -215,6 +216,18 @@ def generate_images(generator, path, h, w, c, latent_dim, std, nr, nc, iteration
     for ri in range(nr):
         for ci in range(nc):
             figure[h*ri:h*(ri+1), w*ci:w*(ci+1)] = generated[ri*nc+ci]
+    figure = np.squeeze(np.clip(figure * 127.5 + 127.5, 0, 255).astype(np.uint8))
+    imsave(os.path.join(path, 'ite_{:02d}.jpg'.format(iteration)), figure)
+    generator.save(os.path.join(path, 'weights_ite_{:02d}.h5'.format(iteration)))
+
+def generate_images_infogan(generator, path, h, w, c, latent_dim, std, nr, nc, iteration, batch_size=1):
+    figure = np.zeros((h * nr, w * nc, c))
+    for ri in range(nr):
+        for ci in range(nc):
+            noise = np.random.normal(0, std, (1, latent_dim)).astype(np.float32)
+            label = to_categorical(np.array([[ci]]), num_classes=nc)
+            latent = np.concatenate((noise, label), axis=-1)
+            figure[h*ri:h*(ri+1), w*ci:w*(ci+1)] = generator.predict(latent, verbose=0, batch_size=1)[0]
     figure = np.squeeze(np.clip(figure * 127.5 + 127.5, 0, 255).astype(np.uint8))
     imsave(os.path.join(path, 'ite_{:02d}.jpg'.format(iteration)), figure)
     generator.save(os.path.join(path, 'weights_ite_{:02d}.h5'.format(iteration)))
