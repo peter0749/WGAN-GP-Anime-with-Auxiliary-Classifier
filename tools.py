@@ -8,9 +8,65 @@ from skimage.io import imsave
 from skimage.transform import resize
 from skimage.color import gray2rgb
 from keras.datasets import mnist
+import keras.backend as K
+from keras.layers import Input
 import imgaug as ia
+from tqdm import tqdm
 from imgaug import augmenters as iaa
 import numpy as np
+from scipy.optimize import fmin_l_bfgs_b
+
+class back_to_z(object):
+    def __init__(self, generator):
+        self.latent_dim   = generator.input_shape[-1]
+        self.output_shape = generator.output_shape[-3:]
+        self.generator = generator
+        self.loss_value = None
+        self.grad_values = None
+        self.op = self.ops___()
+    def ops___(self):
+        z = K.placeholder((1, self.latent_dim)) # (1, laten_dim)
+        img = K.placeholder((1, *self.output_shape)) # (1, h, w, channel)
+        G_in  = Input(tensor=z, batch_shape=(1, self.latent_dim))
+        G_out = self.generator(G_in) # Output of G(z) (a tensor)
+        loss = K.mean(K.square(img - G_out)) # compute loss 
+        grads = K.gradients(loss, z) # compute gradients of z (minimizer)
+        outputs = [loss]
+        if isinstance(grads, (list, tuple)):
+            outputs += grads
+        else:
+            outputs.append(grads)
+        return K.function([z, img], outputs) # return a operation
+    
+    def eval_loss_and_grads(self, z, img):
+        """
+        Given input image, z in latent space and a generative model.
+        We want to find a minimizer z* to minimize || ref_img - G(z) ||^2 a.k.a. least square error between ref_img and G(z).
+        Which can be formulate in optimization problem below:
+        z* = argmin_z || ref_img - G(z) ||^2
+        """
+        z   = z.reshape((1, self.latent_dim))
+        img = img.reshape((1, *self.output_shape))
+        outs = self.op([z, img])
+        loss_value = outs[0]
+        if len(outs[1:]) == 1:
+            grad_values = outs[1].flatten().astype('float64')
+        else:
+            grad_values = np.array(outs[1:]).flatten().astype('float64')
+        # update loss and gradients
+        self.loss_value = loss_value
+        self.grad_values = grad_values
+    def get_loss(self, z):
+        self.eval_loss_and_grads(z, self.img)
+        return self.loss_value
+    def get_grad(self, z):
+        return self.grad_values
+    def get_z(self, ref_img, std=1.0, iterations=300, return_img=False, maxfun=20):
+        self.img = ref_img
+        z = np.random.normal(0, std, self.latent_dim) # initial guess
+        for i in tqdm(range(iterations), total=iterations):
+            z, min_val, info = fmin_l_bfgs_b(self.get_loss, z.flatten(), fprime=self.get_grad, maxfun=maxfun)
+        return (z, self.generator.predict(z.reshape(1, self.latent_dim), verbose=0, batch_size=1)) if return_img else z
 
 def z_interpolation(zs, n=10):
     l = []
