@@ -359,7 +359,7 @@ def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate
 
     return (generator_model, discriminator_model, vae_model, encoder_model, generator, discriminator) if use_vae else (generator_model, discriminator_model, generator, discriminator)  
 
-def build_cyclewgan(h=128, w=128, c_A=3, c_B=3, epsilon_std=1.0, dropout_rate=0.1, GRADIENT_PENALTY_WEIGHT=10, batch_size=8, cyclic_loss_w=10):
+def build_cyclegan(h=128, w=128, c_A=3, c_B=3, epsilon_std=1.0, dropout_rate=0.1, batch_size=8, cyclic_loss_w=10):
     
     optimizer_g = AdamWithWeightnorm(lr=0.0001, beta_1=0.5)
     optimizer_dA = AdamWithWeightnorm(lr=0.0001, beta_1=0.5)
@@ -392,8 +392,8 @@ def build_cyclewgan(h=128, w=128, c_A=3, c_B=3, epsilon_std=1.0, dropout_rate=0.
     discriminator_B_layers_for_generator_B = discriminator_B(generator_BA_layers)# if B->A->B looks like B
     
     generator_model = Model([generator_A_input, generator_B_input], [discriminator_B_layers_for_generator_A, discriminator_A_layers_for_generator_A, discriminator_A_layers_for_generator_B, discriminator_B_layers_for_generator_B])
-    generator_model.add_loss(K.mean(discriminator_B_layers_for_generator_A), inputs=[generator_A])
-    generator_model.add_loss(K.mean(discriminator_A_layers_for_generator_B), inputs=[generator_B])
+    generator_model.add_loss(0.5 * K.mean(K.square(discriminator_B_layers_for_generator_A)), inputs=[generator_A])
+    generator_model.add_loss(0.5 * K.mean(K.square(discriminator_A_layers_for_generator_B)), inputs=[generator_B])
     generator_model.add_loss(cyclic_loss_w * (K.mean(K.abs(generator_A_input - generator_AB_layers)) + K.mean(K.abs(generator_B_input - generator_BA_layers))))
     generator_model.compile(optimizer=optimizer_g, loss=None)
 
@@ -427,22 +427,16 @@ def build_cyclewgan(h=128, w=128, c_A=3, c_B=3, epsilon_std=1.0, dropout_rate=0.
     
     discriminator_B_output_from_generator_A  = discriminator_B(generated_samples_B_for_discriminator_B) # discriminate A->B_fake
     discriminator_B_output_from_real_samples_B = discriminator_B(real_samples_B) # discriminate B_real
-
-    averaged_samples_B = RandomWeightedAverage()([real_samples_B, generated_samples_B_for_discriminator_B])
-    averaged_samples_B_out = discriminator_B(averaged_samples_B)
     
     discriminator_A_output_from_generator_B  = discriminator_A(generated_samples_A_for_discriminator_A) # discriminate B->A_fake
     discriminator_A_output_from_real_samples_A = discriminator_A(real_samples_A) # discriminate A_real
-
-    averaged_samples_A = RandomWeightedAverage()([real_samples_A, generated_samples_A_for_discriminator_A])
-    averaged_samples_A_out = discriminator_A(averaged_samples_A)
     
-    discriminator_A_model = Model([real_samples_A, generator_B_input_for_discriminator_A], [discriminator_A_output_from_real_samples_A, discriminator_A_output_from_generator_B, averaged_samples_A_out])
-    discriminator_A_model.add_loss(K.mean(discriminator_A_output_from_real_samples_A) - K.mean(discriminator_A_output_from_generator_B) + gradient_penalty_loss(averaged_samples_A_out, averaged_samples_A, GRADIENT_PENALTY_WEIGHT))
+    discriminator_A_model = Model([real_samples_A, generator_B_input_for_discriminator_A], [discriminator_A_output_from_real_samples_A, discriminator_A_output_from_generator_B])
+    discriminator_A_model.add_loss(0.5 * K.mean(K.square(discriminator_A_output_from_real_samples_A - 1)) + 0.5 * K.mean(K.square(discriminator_A_output_from_generator_B + 1)))
     discriminator_A_model.compile(optimizer=optimizer_dA, loss=None)
     
-    discriminator_B_model = Model([real_samples_B, generator_A_input_for_discriminator_B], [discriminator_B_output_from_real_samples_B, discriminator_B_output_from_generator_A, averaged_samples_B_out])
-    discriminator_B_model.add_loss(K.mean(discriminator_B_output_from_real_samples_B) - K.mean(discriminator_B_output_from_generator_A) + gradient_penalty_loss(averaged_samples_B_out, averaged_samples_B, GRADIENT_PENALTY_WEIGHT))
+    discriminator_B_model = Model([real_samples_B, generator_A_input_for_discriminator_B], [discriminator_B_output_from_real_samples_B, discriminator_B_output_from_generator_A])
+    discriminator_B_model.add_loss(0.5 * K.mean(K.square(discriminator_B_output_from_real_samples_B - 1)) + 0.5 * K.mean(K.square(discriminator_B_output_from_generator_A + 1)))
     discriminator_B_model.compile(optimizer=optimizer_dB, loss=None)
 
     return generator_model, discriminator_A_model, discriminator_B_model, generator_A, generator_B, discriminator_A, discriminator_B

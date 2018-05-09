@@ -38,7 +38,7 @@ from keras import backend as K
 K.set_session(session)
 from keras.models import *
 from tools import *
-from vae_model import build_cyclewgan
+from vae_model import build_cyclegan
 from keras.datasets import mnist
 from keras.callbacks import TensorBoard
 from keras.callbacks import Callback
@@ -51,7 +51,7 @@ BS = args.batch_size
 EPOCHS = args.epochs
 w, h, c_A, c_B = args.width, args.height, args.channels_A, args.channels_B
 D_ITER = 5
-generator_model, discriminator_A_model, discriminator_B_model, generator_A, generator_B, discriminator_A, discriminator_B = build_cyclewgan(h=h, w=w, c_A=c_A, c_B=c_B, batch_size=BS, dropout_rate=0.2, cyclic_loss_w=args.cyclic_loss_w)
+generator_model, discriminator_A_model, discriminator_B_model, generator_A, generator_B, discriminator_A, discriminator_B = build_cyclegan(h=h, w=w, c_A=c_A, c_B=c_B, batch_size=BS, dropout_rate=0.2, cyclic_loss_w=args.cyclic_loss_w)
 
 if args.load_weights:
     generator_A.load_weights('./generator_A.h5')
