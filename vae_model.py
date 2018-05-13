@@ -201,22 +201,27 @@ def residual_decoder(h, w, c=3, k=4, latent_dim=2, dropout_rate=0.1):
 def residual_ae(h=128, w=128, c_in=3, c_out=3, k=4, dropout_rate=0.1):
     inputs = Input(shape=(h,w,c_in)) # 32x32@c
 
-    x = conv(32, k, 1, pad='same') (inputs) # 32x32@32. stride=1 -> reduce checkboard artifacts
+    x = conv(64, k, 1, pad='same') (inputs) # 32x32@64. stride=1 -> reduce checkboard artifacts
     x = LeakyReLU(0.2) (x)
-    
+
     x = conv(64, k, 2, pad='same') (x) # 16x16@64
     x = LeakyReLU(0.2) (x)
-    x = _res_conv(64, k, dropout_rate) (x) # 16x16@64
     
-    x = _res_conv(128, k, dropout_rate) (x) # 16x16@128
-    x = _res_conv(128, k, dropout_rate) (x) # 16x16@128
+    x = conv(128, k, 2, pad='same') (x) # 8x8@128
+    x = LeakyReLU(0.2) (x)
+    x = _res_conv(128, k, dropout_rate) (x) # 8x8@128
     
-    x = _res_conv(256, k, dropout_rate) (x) # 16x16@256
-    x = _res_conv(256, k, dropout_rate) (x) # 16x16@256
+    x = _res_conv(256, k, dropout_rate) (x) # 8x8@256
+    x = _res_conv(256, k, dropout_rate) (x) # 8x8@256
+    x = _res_conv(256, k, dropout_rate) (x) # 8x8@256
+    x = _res_conv(256, k, dropout_rate) (x) # 8x8@256
+    x = _res_conv(256, k, dropout_rate) (x) # 8x8@256
     
+    x = up_bilinear() (x) # 16x16@256
+    x = Conv2DTranspose(128, k, padding='same') (x)  # 16x16@128
+    x = LeakyReLU(0.2) (x)
     x = _res_conv(128, k, dropout_rate) (x) # 16x16@128
-    x = _res_conv(128, k, dropout_rate) (x) # 16x16@128
-    
+
     x = up_bilinear() (x) # 32x32@128
     x = Conv2DTranspose(64, k, padding='same') (x)  # 32x32@64
     x = LeakyReLU(0.2) (x)
