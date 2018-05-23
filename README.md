@@ -23,6 +23,8 @@ It can even generate MIDI loops!!
 
 [weights](https://github.com/peter0749/WGAN-GP-Anime/releases/download/0.2.0/midi_loop_generator.7z)
 
+[weights_v2](https://github.com/peter0749/WGAN-GP-Anime/releases/download/0.2.0/midi_loop_generator_ver2.h5.zip)
+
 Generate mnist handwritten digits:
 
 ![mnist_demo](assets/mnist.jpg)
