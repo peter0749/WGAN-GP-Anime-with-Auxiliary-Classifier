@@ -85,7 +85,7 @@ def up_bilinear():
         return x
     return block
 
-def residual_discriminator(h=128, w=128, c=3, k=4, dropout_rate=0.1):
+def residual_discriminator(h=128, w=128, c=3, k=4, dropout_rate=0.1, as_classifier=0):
 
     inputs = Input(shape=(h,w,c)) # 32x32@c
 
@@ -117,9 +117,11 @@ def residual_discriminator(h=128, w=128, c=3, k=4, dropout_rate=0.1):
     
     hidden = Flatten() (x) # 2*2*512
     
-    out = Dense(1, kernel_regularizer=l2(0.001), kernel_initializer='he_normal') (hidden)
-    model = Model([inputs], [out])
-    return model
+    if as_classifier>0:
+        out = Dense(as_classifier, kernel_regularizer=l2(0.001), kernel_initializer='he_normal', activation='softmax') (hidden)
+    else:
+        out = Dense(1, kernel_regularizer=l2(0.001), kernel_initializer='he_normal') (hidden)
+    return Model([inputs], [out])
 
 def residual_encoder(h=128, w=128, c=3, k=4, latent_dim=2, epsilon_std=1.0, dropout_rate=0.1):
 
@@ -475,6 +477,71 @@ def build_cyclewgan(h=128, w=128, c_A=3, c_B=3, epsilon_std=1.0, dropout_rate=0.
     discriminator_B_model.compile(optimizer=optimizer_dB, loss=None)
 
     return generator_model, discriminator_A_model, discriminator_B_model, generator_A, generator_B, discriminator_A, discriminator_B
+
+def wgangp_conditional(h=128, w=128, c=3, latent_dim=2, condition_dim=10, epsilon_std=1.0, dropout_rate=0.1, GRADIENT_PENALTY_WEIGHT=10, batch_size=8):
+    
+    optimizer_g = AdamWithWeightnorm(lr=0.0001, beta_1=0.5)
+    optimizer_d = AdamWithWeightnorm(lr=0.0001, beta_1=0.5)
+    optimizer_c = AdamWithWeightnorm(lr=0.0001, beta_1=0.5)
+    
+    vae_input = Input(shape=(h,w,c))
+    encoder_model, t_h, t_w = residual_encoder(h=h, w=w, c=c, latent_dim=10, epsilon_std=epsilon_std, dropout_rate=dropout_rate)
+    del encoder_model
+    generator = residual_decoder(t_h, t_w, c=c, latent_dim=latent_dim+condition_dim, dropout_rate=dropout_rate)
+    
+    discriminator = residual_discriminator(h=h,w=w,c=c,dropout_rate=dropout_rate)
+    classifier = residual_discriminator(h=h,w=w,c=c,dropout_rate=dropout_rate, as_classifier=condition_dim)
+    for layer in discriminator.layers:
+        layer.trainable = False
+    discriminator.trainable = False
+    for layer in classifier.layers:
+        layer.trainable = False
+    classifier.trainable = False
+    
+    generator_input = Input(shape=(latent_dim+condition_dim,))
+    generator_layers = generator(generator_input)
+    
+    discriminator_layers_for_generator = discriminator(generator_layers)
+    classifier_layers_for_generator    = classifier(generator_layers)
+    
+    generator_model = Model(inputs=[generator_input], outputs=[discriminator_layers_for_generator, classifier_layers_for_generator])
+    generator_model.add_loss(K.mean(discriminator_layers_for_generator))
+    generator_model.compile(optimizer=optimizer_g, loss=[None, 'categorical_crossentropy'])
+
+    # Now that the generator_model is compiled, we can make the discriminator layers trainable.
+    for layer in discriminator.layers:
+        layer.trainable = True
+    for layer in classifier.layers:
+        layer.trainable = True
+    for layer in generator.layers:
+        layer.trainable = False
+    discriminator.trainable = True
+    classifier.trainable = True
+    generator.trainable = False
+
+    # The discriminator_model is more complex. It takes both real image samples and random noise seeds as input.
+    # The noise seed is run through the generator model to get generated images. Both real and generated images
+    # are then run through the discriminator. Although we could concatenate the real and generated images into a
+    # single tensor, we don't (see model compilation for why).
+    real_samples = Input(shape=(h, w, c))
+    generator_input_for_discriminator = Input(shape=(latent_dim+condition_dim,))
+    generated_samples_for_discriminator = generator(generator_input_for_discriminator)
+    discriminator_output_from_generator = discriminator(generated_samples_for_discriminator)
+    discriminator_output_from_real_samples = discriminator(real_samples)
+    
+    classifier_output_from_real_samples = classifier(real_samples)
+
+    averaged_samples = RandomWeightedAverage()([real_samples, generated_samples_for_discriminator])
+    averaged_samples_out = discriminator(averaged_samples)
+    
+    discriminator_model = Model([real_samples, generator_input_for_discriminator], [discriminator_output_from_real_samples, discriminator_output_from_generator, averaged_samples_out])
+    discriminator_model.add_loss(K.mean(discriminator_output_from_real_samples) - K.mean(discriminator_output_from_generator) + gradient_penalty_loss(averaged_samples_out, averaged_samples, GRADIENT_PENALTY_WEIGHT))
+    discriminator_model.compile(optimizer=optimizer_d, loss=None)
+    
+    classifier_model = Model([real_samples], [classifier_output_from_real_samples])
+    classifier_model.compile(optimizer=optimizer_c, loss='categorical_crossentropy')
+
+    return generator_model, discriminator_model, classifier_model, generator, discriminator, classifier
 
 if __name__ == '__main__':
     residual_ae(256, 256, 3, 3).summary()
