@@ -15,6 +15,8 @@ from tqdm import tqdm
 from imgaug import augmenters as iaa
 from keras.utils import to_categorical
 import numpy as np
+import pandas as pd
+from sklearn.utils import shuffle as skshuffle
 from scipy.optimize import fmin_l_bfgs_b
 
 class back_to_z(object):
@@ -171,12 +173,27 @@ def get_all_data(images_path, height=128, width=128):
     
 
 class data_generator(Sequence):
-    def __init__(self, images_path, height=128, width=128, channel=3, batch_size=8, shuffle=True, normalize=True):
+    def __init__(self, images_path, height=128, width=128, channel=3, batch_size=8, shuffle=True, normalize=True, save_tags=False):
         self.bs = batch_size
         self.imgs = glob.glob(images_path+'/*.jpg') ## paths
         self.imgs.extend(glob.glob(images_path+'/*.png'))
         self.imgs.extend(glob.glob(images_path+'/**/*.png'))
         self.imgs.extend(glob.glob(images_path+'/**/*.jpg'))
+        self.tags = []
+        self.labels = []
+        self.tag_dict = dict()
+        for file in self.imgs: # get all tags
+            parent_dir = os.path.split(file)[0]
+            tag = os.path.split(parent_dir)[-1]
+            if not tag in self.tag_dict:
+                self.tag_dict[tag] = len(self.tags)
+                self.tags.append(tag)
+            self.labels.append(self.tag_dict[tag])
+        assert len(self.labels) == len(self.imgs)
+        if save_tags:
+            tag_csv = pd.DataFrame()
+            tag_csv['tags'] = self.tags
+            tag_csv.to_csv('./tags.csv', index=False)
         self.h = height
         self.w = width
         self.c = channel
@@ -188,7 +205,7 @@ class data_generator(Sequence):
         return int(np.ceil(float(len(self.imgs))/self.bs))
     def random_shuffle(self):
         if self.shuffle:
-            np.random.shuffle(self.imgs)
+            self.imgs, self.labels = skshuffle(self.imgs, self.labels)
     def __getitem__(self, idx):
         l_bound = idx     * self.bs
         r_bound = (idx+1) * self.bs
@@ -207,7 +224,7 @@ class data_generator(Sequence):
                 img = gray2rgb(img)
             img = img[...,:self.c]
             x_batch[n] = np.clip((img.astype(np.float32)-127.5) / 127.5, -1, 1) if self.normalize else img[...,:self.c]
-        return x_batch, None
+        return x_batch, to_categorical(self.labels[l_bound:r_bound], len(self.tags))
 
 def generate_images(generator, path, h, w, c, latent_dim, std, nr, nc, iteration, batch_size=1):
     noise = np.random.normal(0, std, (nr*nc, latent_dim))
