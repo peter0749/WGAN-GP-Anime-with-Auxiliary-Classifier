@@ -199,8 +199,6 @@ class data_generator(Sequence):
         self.c = channel
         self.shuffle = shuffle
         self.normalize = normalize
-        if self.shuffle:
-            np.random.shuffle(self.imgs)
     def __len__(self):
         return int(np.ceil(float(len(self.imgs))/self.bs))
     def random_shuffle(self):
