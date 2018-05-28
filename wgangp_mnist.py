@@ -20,7 +20,7 @@ from keras import backend as K
 K.set_session(session)
 from keras.models import *
 from tools import *
-from models import build_residual_vae, build_vae_gan
+from models import , build_gan
 from keras.datasets import mnist
 from keras.callbacks import TensorBoard
 from keras.callbacks import Callback
@@ -32,7 +32,7 @@ EPOCHS = args.epochs
 w, h, c = 32, 32, 1
 latent_dim = 100
 D_ITER = 5
-generator_model, discriminator_model, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, use_vae=False)
+generator_model, discriminator_model, decoder, discriminator = build_gan(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2)
 
 (x_train, _), (___, __) = mnist.load_data()
 x_train = np.squeeze(x_train.astype(np.float32)-127.5) / 127.5

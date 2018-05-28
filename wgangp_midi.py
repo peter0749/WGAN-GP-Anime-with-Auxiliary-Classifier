@@ -20,7 +20,7 @@ from keras import backend as K
 K.set_session(session)
 from keras.models import *
 from tools import *
-from models import build_residual_vae, build_vae_gan
+from models import , build_gan
 from keras.datasets import mnist
 from keras.callbacks import TensorBoard
 from keras.callbacks import Callback
@@ -32,7 +32,7 @@ EPOCHS = args.epochs
 w, h, c = 64, 64, 1
 latent_dim = 100
 D_ITER = 5
-generator_model, discriminator_model, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, use_vae=False)
+generator_model, discriminator_model, decoder, discriminator = build_gan(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2)
 
 train_generator = data_generator('./midi', height=h, width=w, channel=1, batch_size=BS, shuffle=True, normalize=True)
 

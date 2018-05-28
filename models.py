@@ -123,45 +123,6 @@ def residual_discriminator(h=128, w=128, c=3, k=4, dropout_rate=0.1, as_classifi
         out = Dense(1, kernel_regularizer=l2(0.001), kernel_initializer='he_normal') (hidden)
     return Model([inputs], [out])
 
-def residual_encoder(h=128, w=128, c=3, k=4, latent_dim=2, epsilon_std=1.0, dropout_rate=0.1):
-
-    inputs = Input(shape=(h,w,c)) # 32x32@c
-
-    # block 1:
-    x = conv(32, k, 1, pad='same') (inputs) # 32x32@32. stride=1 -> reduce checkboard artifacts
-    x = LeakyReLU(0.2) (x)
-    x = Dropout(dropout_rate) (x)
-    x = conv(64, k, 2, pad='same') (x) # 16x16@64
-    x = LeakyReLU(0.2) (x)
-    x = Dropout(dropout_rate) (x)
-    
-    # block 2:
-    x = conv(128, k, 2, pad='same') (x) # 8x8@128
-    x = LeakyReLU(0.2) (x)
-    x = Dropout(dropout_rate) (x)
-    
-    # block 3:
-    x = conv(256, k, 2) (x) # 4x4@256
-    x = LeakyReLU(0.2) (x)
-    x = Dropout(dropout_rate) (x)
-    
-    # block 3:
-    x = conv(256, k, 2) (x) # 2x2@256
-    x = LeakyReLU(0.2) (x)
-    x = Dropout(dropout_rate) (x)
-    
-    # block 4:
-    x = _res_conv(512, k, dropout_rate) (x) # 2x2@512
-    
-    hidden = Flatten() (x) # 2*2*512
-
-    z_mean =    Dense(latent_dim, kernel_regularizer=l2(0.001))(hidden)
-    z_log_var = Dense(latent_dim, kernel_regularizer=l2(0.001))(hidden)
-
-    z = Lambda(sampling, output_shape=(latent_dim,), arguments={'latent_dim':latent_dim, 'epsilon_std':epsilon_std}) ([z_mean, z_log_var])
-    model = Model([inputs], [z, z_mean, z_log_var])
-    return model, int(x.shape[1]), int(x.shape[2]) # h, w
-
 def residual_decoder(h, w, c=3, k=4, latent_dim=2, dropout_rate=0.1):
 
     inputs_ = Input(shape=(latent_dim,))
@@ -226,34 +187,12 @@ def residual_ae(h=128, w=128, c_in=3, c_out=3, k=4, dropout_rate=0.1):
     outputs = conv(c_out, k, 1, act='tanh') (x) # 32x32@c
     return Model([inputs], [outputs])
 
-def build_residual_vae(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate=0.1):
-
-    optimizer = AdamWithWeightnorm(lr=0.0001, beta_1=0.5)
-    images = Input(shape=(h,w,c), name='vae_input_images')
-
-    encoder_model, t_h, t_w = residual_encoder(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=epsilon_std, dropout_rate=dropout_rate)
-    z, z_mean, z_log_var = encoder_model(images)
-    decoder_model = residual_decoder(t_h, t_w, c=c, latent_dim=latent_dim, dropout_rate=dropout_rate)
-    outputs = decoder_model(z)
-    
-    d_loss  = K.mean( 0.5 * K.sum(K.square(images - outputs), axis=-1) / (2*(epsilon_std**2)) + np.log(epsilon_std)) # gaussian_log_likelihood, may makes outputs blurry
-    kl_loss = K.mean(-0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)) # KL-divergence
-
-    vae = Model([images], [outputs])
-    vae.add_loss(d_loss) # add reconstruction loss (gaussian_log_likelihood) to decoder(generator)
-    vae.add_loss(kl_loss,  inputs=[encoder_model]) # add KL-divergence loss to encoder
-    vae.compile(optimizer=optimizer, loss=None)
-
-    return vae, encoder_model, decoder_model
-
-def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate=0.1, GRADIENT_PENALTY_WEIGHT=10, batch_size=8, use_vae=False, vae_use_sse=True):
+def build_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate=0.1, GRADIENT_PENALTY_WEIGHT=10, batch_size=8):
     
     optimizer_g = AdamWithWeightnorm(lr=0.0001, beta_1=0.5)
     optimizer_d = AdamWithWeightnorm(lr=0.0001, beta_1=0.5)
     
-    vae_input = Input(shape=(h,w,c))
-    encoder_model, t_h, t_w = residual_encoder(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=epsilon_std, dropout_rate=dropout_rate)
-    z, z_mean, z_log_var = encoder_model(vae_input)
+    t_h, t_w = h//16, w//16
     generator = residual_decoder(t_h, t_w, c=c, latent_dim=latent_dim, dropout_rate=dropout_rate)
     
     discriminator = residual_discriminator(h=h,w=w,c=c,dropout_rate=dropout_rate)
@@ -268,18 +207,6 @@ def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate
     generator_model = Model(inputs=[generator_input], outputs=[discriminator_layers_for_generator])
     generator_model.add_loss(K.mean(discriminator_layers_for_generator))
     generator_model.compile(optimizer=optimizer_g, loss=None)
-    
-    if use_vae:
-        vae_output = generator(z)
-        d_loss  = K.mean( 0.5 * K.sum(K.square(vae_input - vae_output), axis=-1) / (2*(epsilon_std**2)) + np.log(epsilon_std)) # gaussian_log_likelihood
-        kl_loss = K.mean(-0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)) # KL-divergence
-        discriminator_layers_for_vae = discriminator(vae_output)
-        models = Model(inputs=[vae_input], outputs=[discriminator_layers_for_vae])
-        models.add_loss(kl_loss, inputs=[encoder_model])
-        models.add_loss(K.mean(discriminator_layers_for_vae))
-        if vae_use_sse:
-            models.add_loss(d_loss) # may makes outputs blurry
-        models.compile(optimizer=optimizer_g, loss=None)
 
     # Now that the generator_model is compiled, we can make the discriminator layers trainable.
     for layer in discriminator.layers:
@@ -306,7 +233,7 @@ def build_vae_gan(h=128, w=128, c=3, latent_dim=2, epsilon_std=1.0, dropout_rate
     discriminator_model.add_loss(K.mean(discriminator_output_from_real_samples) - K.mean(discriminator_output_from_generator) + gradient_penalty_loss(averaged_samples_out, averaged_samples, GRADIENT_PENALTY_WEIGHT))
     discriminator_model.compile(optimizer=optimizer_d, loss=None)
 
-    return (generator_model, discriminator_model, models, encoder_model, generator, discriminator) if use_vae else (generator_model, discriminator_model, generator, discriminator)  
+    return generator_model, discriminator_model, generator, discriminator
 
 def build_cyclegan(h=128, w=128, c_A=3, c_B=3, epsilon_std=1.0, dropout_rate=0.1, batch_size=8, cyclic_loss_w=10):
     
@@ -484,9 +411,7 @@ def wgangp_conditional(h=128, w=128, c=3, latent_dim=2, condition_dim=10, epsilo
     optimizer_d = AdamWithWeightnorm(lr=0.0001, beta_1=0.5)
     optimizer_c = AdamWithWeightnorm(lr=0.0001, beta_1=0.5)
     
-    vae_input = Input(shape=(h,w,c))
-    encoder_model, t_h, t_w = residual_encoder(h=h, w=w, c=c, latent_dim=10, epsilon_std=epsilon_std, dropout_rate=dropout_rate)
-    del encoder_model
+    t_h, t_w = h//16, w//16
     generator = residual_decoder(t_h, t_w, c=c, latent_dim=latent_dim+condition_dim, dropout_rate=dropout_rate)
     
     discriminator = residual_discriminator(h=h,w=w,c=c,dropout_rate=dropout_rate)
@@ -543,7 +468,3 @@ def wgangp_conditional(h=128, w=128, c=3, latent_dim=2, condition_dim=10, epsilo
 
     return generator_model, discriminator_model, classifier_model, generator, discriminator, classifier
 
-if __name__ == '__main__':
-    residual_ae(256, 256, 3, 3).summary()
-    residual_discriminator(256, 256, 3).summary()
-    residual_decoder(16, 16, 3).summary()
