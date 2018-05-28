@@ -1,8 +1,8 @@
 import argparse
 parser = argparse.ArgumentParser(description='Music Generation with VAE')
-parser.add_argument('--batch_size', type=int, default=32, required=False,
+parser.add_argument('--batch_size', type=int, default=16, required=False,
                     help='batch size')
-parser.add_argument('--epochs', type=int, default=120, required=False,
+parser.add_argument('--epochs', type=int, default=50, required=False,
                     help='epochs')
 parser.add_argument('--std', type=float, default=1.0, required=False,
                     help='sampling std')
@@ -21,7 +21,7 @@ K.set_session(session)
 from keras.models import *
 from tools import *
 from models import build_gan
-from keras.datasets import mnist
+from keras.datasets import cifar10
 from keras.callbacks import TensorBoard
 from keras.callbacks import Callback
 from skimage.io import imsave
@@ -29,12 +29,13 @@ from tqdm import tqdm
 
 BS = args.batch_size
 EPOCHS = args.epochs
-w, h, c = 64, 64, 1
+w, h, c = 32, 32, 3
 latent_dim = 100
 D_ITER = 5
 generator_model, discriminator_model, decoder, discriminator = build_gan(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2)
 
-train_generator = data_generator('./midi', height=h, width=w, channel=1, batch_size=BS, shuffle=True, normalize=True)
+(x_train, _), (___, __) = cifar10.load_data()
+x_train = (x_train.astype(np.float32)-127.5) / 127.5
 
 if not os.path.exists('./preview'):
     os.makedirs('./preview')
@@ -42,10 +43,12 @@ if not os.path.exists('./preview'):
 d_counter = 0
 for epoch in range(EPOCHS):
     print("Epoch: %d / %d"%(epoch+1, EPOCHS))
-    train_generator.random_shuffle()
-    with tqdm(total=len(train_generator)) as t:
-        for i in range(len(train_generator)):
-            image_batch, _ = train_generator.__getitem__(i)
+    np.random.shuffle(x_train)
+    with tqdm(total=int(np.ceil(float(len(x_train)) / BS))) as t:
+        for i in range(0, len(x_train), BS):
+            r_bound = min(len(x_train), i+BS)
+            l_bound = r_bound - BS
+            image_batch = x_train[l_bound:r_bound]
             noise = np.random.normal(0, args.std, (BS, latent_dim)).astype(np.float32)
             msg = ''
             msg += 'DL: {:.2f}, '.format(np.mean(discriminator_model.train_on_batch([image_batch, noise], None)))
