@@ -32,3 +32,5 @@ Generate mnist handwritten digits:
 WGAN-GP with Auxiliary Classifier
 
 ![mnist_conditional](assets/mnist_conditional.jpg)
+
+![fashion_mnist_conditional](preview_fashion_mnist_conditional/ite_122001.jpg)
