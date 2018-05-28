@@ -22,7 +22,7 @@ from keras import backend as K
 K.set_session(session)
 from keras.models import *
 from tools import *
-from vae_model import build_residual_vae, build_vae_gan
+from models import build_residual_vae, build_vae_gan
 from keras.datasets import mnist
 from keras.callbacks import TensorBoard
 from keras.callbacks import Callback
@@ -34,7 +34,7 @@ BS = args.batch_size
 EPOCHS = args.epochs
 w, h, c = 48, 48, 3
 latent_dim = 100
-generator_model, discriminator_model, vae_model, encoder, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, use_vae=True, vae_use_sse=args.use_sse)
+generator_model, discriminator_model, models, encoder, decoder, discriminator = build_vae_gan(h=h, w=w, c=c, latent_dim=latent_dim, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2, use_vae=True, vae_use_sse=args.use_sse)
 
 x_train = get_all_data('./anime-faces', height=h, width=w)
 
@@ -60,7 +60,7 @@ for epoch in range(EPOCHS):
             if g_counter==G_FREQ_INV:
                 msg += 'GL: {:.2f}, '.format(np.mean(generator_model.train_on_batch(np.random.normal(0, args.std, (BS, latent_dim)).astype(np.float32), None)))
                 g_counter = 0
-            msg += 'VAE_L: {:.2f} '.format(np.mean(vae_model.train_on_batch(image_batch, None)))
+            msg += 'VAE_L: {:.2f} '.format(np.mean(models.train_on_batch(image_batch, None)))
             t.set_description(msg)
             t.update()
     generate_images(decoder, './preview', h, w, c, latent_dim, args.std, 15, 15, epoch, BS)

@@ -20,7 +20,7 @@ from keras import backend as K
 K.set_session(session)
 from keras.models import *
 from tools import *
-from vae_model import wgangp_conditional
+from models import wgangp_conditional
 from keras.datasets import fashion_mnist as mnist
 from keras.callbacks import TensorBoard
 from keras.callbacks import Callback

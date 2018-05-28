@@ -10,7 +10,7 @@ import keras
 from keras import backend as K
 K.set_session(session)
 from keras.models import *
-from vae_model import up_bilinear
+from models import up_bilinear
 from tools import back_to_z
 from skimage.io import imsave, imread
 from skimage.transform import resize

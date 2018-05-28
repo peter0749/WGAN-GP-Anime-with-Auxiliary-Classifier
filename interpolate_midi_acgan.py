@@ -11,7 +11,7 @@ from keras.utils import to_categorical
 from keras import backend as K
 K.set_session(session)
 from keras.models import *
-from vae_model import up_bilinear
+from models import up_bilinear
 from skimage.io import imsave
 from pixel_shuffler import PixelShuffler
 from tools import z_interpolation

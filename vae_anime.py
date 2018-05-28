@@ -19,7 +19,7 @@ from keras import backend as K
 K.set_session(session)
 from keras.models import *
 from tools import *
-from vae_model import build_residual_vae
+from models import build_residual_vae
 from keras.datasets import mnist
 from keras.callbacks import Callback
 from skimage.io import imsave
