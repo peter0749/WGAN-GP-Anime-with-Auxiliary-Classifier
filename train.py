@@ -36,7 +36,7 @@ from keras import backend as K
 K.set_session(session)
 from keras.models import *
 from tools import *
-from models import , build_gan
+from models import build_gan
 from keras.datasets import mnist
 from keras.callbacks import TensorBoard
 from keras.callbacks import Callback
