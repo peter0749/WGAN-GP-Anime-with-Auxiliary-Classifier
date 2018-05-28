@@ -80,6 +80,25 @@ def z_interpolation(zs, n=10):
         t = np.asarray(t).transpose((1,0))
         l.extend(t)
     return np.asarray(l)
+
+def generate_image_interpolation_w_class(generator, path, h, w, c, latent_dim, std, nr, nc, dt, n, batch_size=8):
+    interpolate_noise = np.zeros(((n-1)*dt, nr, nc, latent_dim))
+    for ri in range(nr):
+        for ci in range(nc):
+            zs  = np.random.normal(0, std, (n, latent_dim - nc))
+            l_  = to_categorical(np.asarray([ci] * n), nc)
+            zs  = np.append(zs, l_, axis=-1)
+            z_t = z_interpolation(zs, dt) # shape: (nt, latent_dim)
+            interpolate_noise[:, ri, ci, :] = z_t
+    
+    for t in range((n-1)*dt):
+        figure = np.zeros((h * nr, w * nc, c))
+        gs = generator.predict(interpolate_noise[t].reshape(-1, latent_dim), batch_size=batch_size).reshape(nr, nc, h, w, c)
+        for ri in range(nr):
+            for ci in range(nc):
+                figure[h*ri:h*(ri+1), w*ci:w*(ci+1)] = gs[ri, ci]
+        figure = np.squeeze(np.clip(figure * 127.5 + 127.5, 0, 255).astype(np.uint8))
+        imsave(os.path.join(path, 't_{:02d}.jpg'.format(t)), figure)
     
 def generate_image_interpolation(generator, path, h, w, c, latent_dim, std, nr, nc, dt, n, batch_size=8):
     interpolate_noise = np.zeros(((n-1)*dt, nr, nc, latent_dim))
