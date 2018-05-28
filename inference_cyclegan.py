@@ -18,7 +18,7 @@ from pixel_shuffler import PixelShuffler
 from tqdm import tqdm
 import argparse
 
-parser = argparse.ArgumentParser(description='Image Generation with VAE/GAN')
+parser = argparse.ArgumentParser(description='Image Generation with GAN')
 parser.add_argument('input', metavar='input_dir', type=str, help='input_dir')
 parser.add_argument('output', metavar='output_dir', type=str, help='output_dir')
 parser.add_argument('--model', type=str, default='./generator_A.h5', required=False, help='model')

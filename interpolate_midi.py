@@ -16,7 +16,7 @@ from pixel_shuffler import PixelShuffler
 from tools import z_interpolation
 import argparse
 
-parser = argparse.ArgumentParser(description='Image Generation with VAE/GAN')
+parser = argparse.ArgumentParser(description='MIDI loop Generation with GAN')
 parser.add_argument('output', metavar='output', type=str, help='')
 parser.add_argument('--model', type=str, default='./decoder.h5', required=False, help='model')
 parser.add_argument('--n' , type=int, default=9, required=False, help='Interpolation points')

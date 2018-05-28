@@ -17,7 +17,7 @@ from tools import generate_image_interpolation_w_class
 import argparse
 import pandas as pd
 
-parser = argparse.ArgumentParser(description='Image Generation with VAE/GAN')
+parser = argparse.ArgumentParser(description='Image Generation with GAN')
 parser.add_argument('output', metavar='output', type=str, help='')
 parser.add_argument('tag_file',  metavar='tag_file',  type=str, help='')
 parser.add_argument('--model', type=str, default='./decoder.h5', required=False, help='model')

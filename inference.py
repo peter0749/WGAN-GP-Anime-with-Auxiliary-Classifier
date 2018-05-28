@@ -15,7 +15,7 @@ from skimage.io import imsave
 from pixel_shuffler import PixelShuffler
 import argparse
 
-parser = argparse.ArgumentParser(description='Image Generation with VAE/GAN')
+parser = argparse.ArgumentParser(description='Image Generation with GAN')
 parser.add_argument('output', metavar='output', type=str, help='')
 parser.add_argument('--model', type=str, default='./decoder.h5', required=False, help='model')
 parser.add_argument('--n', type=int, default=64, required=False, help='')

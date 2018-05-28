@@ -18,7 +18,7 @@ from tools import z_interpolation
 import pandas as pd
 import argparse
 
-parser = argparse.ArgumentParser(description='Image Generation with VAE/GAN')
+parser = argparse.ArgumentParser(description='MIDI loop Generation with GAN')
 parser.add_argument('output', metavar='output', type=str, help='')
 parser.add_argument('label',  metavar='label',  type=str, help='')
 parser.add_argument('tag_file',  metavar='tag_file',  type=str, help='')
