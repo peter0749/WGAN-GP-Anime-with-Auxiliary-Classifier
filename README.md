@@ -4,6 +4,14 @@ Demos:
 
 Interpolation in latent space:
 
+WGAN-GP with Auxiliary Classifier:
+
+[![](assets/wgan-ac.gif)](https://youtu.be/X1ZSdN3p-Xo)
+
+WGAN-GP:
+
+[![interpolation](assets/t_00.jpg)](https://youtu.be/Z3mCvaWJd6Y)
+
 [![interpolation](assets/t_00.jpg)](https://youtu.be/Z3mCvaWJd6Y)
 
 Training:
