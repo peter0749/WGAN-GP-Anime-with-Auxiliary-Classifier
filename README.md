@@ -14,12 +14,12 @@ WGAN-GP:
 
 [![interpolation](assets/t_00.jpg)](https://youtu.be/Z3mCvaWJd6Y)
 
-Training:
-[![training](assets/ite_141500.jpg)](https://youtu.be/5WlgixPlwDA)
-
 [weights_128x128](https://github.com/peter0749/WGAN-GP-Anime/releases/download/0.2.0/anime_128x128.7z)
 
 [weights_96x96](https://github.com/peter0749/WGAN-GP-Anime/releases/download/0.2.0/anime_96x96.7z)
+
+Training:
+[![training](assets/ite_141500.jpg)](https://youtu.be/5WlgixPlwDA)
 
 It can even generate MIDI loops!!
 
