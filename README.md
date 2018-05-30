@@ -12,8 +12,6 @@ WGAN-GP:
 
 [![interpolation](assets/t_00.jpg)](https://youtu.be/Z3mCvaWJd6Y)
 
-[![interpolation](assets/t_00.jpg)](https://youtu.be/Z3mCvaWJd6Y)
-
 Training:
 [![training](assets/ite_141500.jpg)](https://youtu.be/5WlgixPlwDA)
 
