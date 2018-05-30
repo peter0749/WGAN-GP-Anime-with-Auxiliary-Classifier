@@ -8,6 +8,8 @@ WGAN-GP with Auxiliary Classifier:
 
 [![](assets/wgan-ac.gif)](https://youtu.be/X1ZSdN3p-Xo)
 
+[weights](https://github.com/peter0749/WGAN-GP-Anime-with-Auxiliary-Classifier/releases/download/0.3.0/wgan-ac-anime.7z)
+
 WGAN-GP:
 
 [![interpolation](assets/t_00.jpg)](https://youtu.be/Z3mCvaWJd6Y)
@@ -27,7 +29,7 @@ It can even generate MIDI loops!!
 
 [![midi2](https://img.youtube.com/vi/AX2lXaEue0Y/0.jpg)](https://www.youtube.com/watch?v=AX2lXaEue0Y)
 
-[weights](https://github.com/peter0749/WGAN-GP-Anime/releases/download/0.2.0/midi_loop_generator.7z)
+[weights_v1](https://github.com/peter0749/WGAN-GP-Anime/releases/download/0.2.0/midi_loop_generator.7z)
 
 [weights_v2](https://github.com/peter0749/WGAN-GP-Anime/releases/download/0.2.0/midi_loop_generator_ver2.h5.zip)
 
