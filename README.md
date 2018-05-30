@@ -2,6 +2,12 @@
 
 Demos:
 
+![mnist_conditional](assets/mnist_conditional.gif)
+(mnist)
+
+![fashion_mnist_conditional](assets/fashion-mnist.gif)
+(fashion-mnist)
+
 Interpolation in latent space:
 
 WGAN-GP with Auxiliary Classifier:
@@ -38,9 +44,3 @@ It can even generate MIDI loops!!
 Generate mnist handwritten digits:
 
 ![mnist_demo](assets/mnist.jpg)
-
-WGAN-GP with Auxiliary Classifier
-
-![mnist_conditional](assets/mnist_conditional.gif)
-
-![fashion_mnist_conditional](assets/fashion-mnist.gif)
