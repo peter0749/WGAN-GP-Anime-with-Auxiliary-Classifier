@@ -1,20 +1,20 @@
-# WGAN-GP Anime face generation
-
-Demos:
-
-![mnist_conditional](assets/mnist_conditional.gif)
-(mnist)
-
-![fashion_mnist_conditional](assets/fashion-mnist.gif)
-(fashion-mnist)
-
-Interpolation in latent space:
+# WGAN-GP Anime with Auxiliary Classifier
 
 WGAN-GP with Auxiliary Classifier:
+
+Anime face interpolation in latent space:
 
 [![](assets/wgan-ac.gif)](https://youtu.be/X1ZSdN3p-Xo)
 
 [weights](https://github.com/peter0749/WGAN-GP-Anime-with-Auxiliary-Classifier/releases/download/0.3.0/wgan-ac-anime.7z)
+
+mnist:
+
+![mnist_conditional](assets/mnist_conditional.gif)
+
+fashion-mnist:
+
+![fashion_mnist_conditional](assets/fashion-mnist.gif)
 
 WGAN-GP:
 
