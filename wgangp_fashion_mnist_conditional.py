@@ -33,7 +33,7 @@ EPOCHS = args.epochs
 w, h, c = 32, 32, 1
 latent_dim = 100
 D_ITER = 5
-generator_model, discriminator_model, classifier_model, generator, discriminator, classifier = wgangp_conditional(h=h, w=w, c=c, latent_dim=latent_dim, condition_dim=10, epsilon_std=args.std, batch_size=BS, dropout_rate=0.2)
+generator_model, discriminator_model, classifier_model, generator, discriminator, classifier = wgangp_conditional(h=h, w=w, c=c, latent_dim=latent_dim, condition_dim=10, epsilon_std=args.std, dropout_rate=0.2)
 
 (x_train, y_train), (___, __) = mnist.load_data()
 x_train = np.squeeze(x_train.astype(np.float32)-127.5) / 127.5
