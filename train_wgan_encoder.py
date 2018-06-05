@@ -78,7 +78,7 @@ for epoch in range(EPOCHS):
             if i_counter % args.preview_iteration == 0:
                 img = decoder.predict(encoder.predict(image_batch[0:1]))[0]
                 img = np.append(img, image_batch[0], axis=1)
-                imsave('./preview/ite_{:d}.jpg'.format(i_counter), img)
+                imsave('./preview/ite_{:d}.jpg'.format(i_counter), np.squeeze(img))
             i_counter += 1
             
             msg = 'loss: {:.2f}'.format(AE / i_counter)
