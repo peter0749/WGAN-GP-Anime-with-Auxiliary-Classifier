@@ -72,7 +72,7 @@ for epoch in range(EPOCHS):
                 image_batch = seq.augment_images(image_batch)
                 image_batch = (image_batch.astype(np.float32) - 127.5) / 127.5
             
-            z, condition = make_some_noise()
+            z = make_some_noise()
             AE += np.mean(encoder_model.train_on_batch([image_batch, z], None))
             
             if i_counter % args.preview_iteration == 0:
