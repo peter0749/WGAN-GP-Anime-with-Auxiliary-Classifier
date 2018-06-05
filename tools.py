@@ -20,10 +20,11 @@ from sklearn.utils import shuffle as skshuffle
 from scipy.optimize import fmin_l_bfgs_b
 
 class back_to_z(object):
-    def __init__(self, generator):
+    def __init__(self, generator, encoder=None):
         self.latent_dim   = generator.input_shape[-1]
         self.output_shape = generator.output_shape[-3:]
         self.generator = generator
+        self.encoder = encoder
         self.loss_value = None
         self.grad_values = None
         self.op = self.ops___()
@@ -66,7 +67,10 @@ class back_to_z(object):
         return self.grad_values
     def get_z(self, ref_img, std=1.0, iterations=300, return_img=False, maxfun=20):
         self.img = ref_img
-        z = np.random.normal(0, std, self.latent_dim) # initial guess
+        if self.encoder is None:
+            z = np.random.normal(0, std, self.latent_dim) # initial guess
+        else:
+            z = self.encoder.predict(self.img[np.newaxis,...], batch_size=1)[0]
         for i in tqdm(range(iterations), total=iterations):
             z, min_val, info = fmin_l_bfgs_b(self.get_loss, z.flatten(), fprime=self.get_grad, maxfun=maxfun)
         return (z, self.generator.predict(z.reshape(1, self.latent_dim), verbose=0, batch_size=1)) if return_img else z
