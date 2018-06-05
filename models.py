@@ -123,6 +123,40 @@ def residual_discriminator(h=128, w=128, c=3, k=4, dropout_rate=0.1, as_classifi
         out = Dense(1, kernel_regularizer=l2(0.001), kernel_initializer='he_normal') (hidden)
     return Model([inputs], [out])
 
+def residual_encoder(h=128, w=128, c=3, latent_dim=100, k=4, dropout_rate=0.1):
+
+    inputs = Input(shape=(h,w,c)) # 32x32@c
+
+    # block 1:
+    x = conv(32, k, 1, pad='same') (inputs) # 32x32@32. stride=1 -> reduce checkboard artifacts
+    x = LeakyReLU(0.2) (x)
+    x = Dropout(dropout_rate) (x)
+    x = conv(64, k, 2, pad='same') (x) # 16x16@64
+    x = LeakyReLU(0.2) (x)
+    x = Dropout(dropout_rate) (x)
+    
+    # block 2:
+    x = conv(128, k, 2, pad='same') (x) # 8x8@128
+    x = LeakyReLU(0.2) (x)
+    x = Dropout(dropout_rate) (x)
+    
+    # block 3:
+    x = conv(256, k, 2) (x) # 4x4@256
+    x = LeakyReLU(0.2) (x)
+    x = Dropout(dropout_rate) (x)
+    
+    # block 3:
+    x = conv(256, k, 2) (x) # 2x2@256
+    x = LeakyReLU(0.2) (x)
+    x = Dropout(dropout_rate) (x)
+    
+    # block 4:
+    x = _res_conv(512, k, dropout_rate) (x) # 2x2@512
+    
+    hidden = Flatten() (x) # 2*2*512
+    out = Dense(latent_dim, kernel_regularizer=l2(0.001), kernel_initializer='he_normal') (hidden)
+    return Model([inputs], [out])
+
 def residual_decoder(h, w, c=3, k=4, latent_dim=2, dropout_rate=0.1):
 
     inputs_ = Input(shape=(latent_dim,))
@@ -272,3 +306,27 @@ def wgangp_conditional(h=128, w=128, c=3, latent_dim=2, condition_dim=10, epsilo
 
     return generator_model, discriminator_model, classifier_model, generator, discriminator, classifier
 
+def make_encoder(decoder):
+    latent_dim = decoder.input_shape[-1]
+    h, w, c = decoder.output_shape[-3:]
+    encoder = residual_encoder(h, w, c, latent_dim)
+    encoder.name = 'encoder'
+    for l in decoder.layers:
+        l.trainable=False
+    decoder.trainable=False
+    latent_input = Input(shape=(latent_dim,))
+    real_input = Input(shape=(h,w,c))
+    
+    x_h_0 = decoder(latent_input) # latent -> image
+    y_h_0 = encoder(x_h_0)        # image  -> latent
+    x_h_h_0 = decoder(y_h_0)      # latent -> image
+    
+    y_h_1 = encoder(real_input)   # image  -> latent
+    x_h_1 = decoder(y_h_1)        # latent -> image
+    
+    loss = K.mean(K.square(y_h_0-latent_input)) + K.mean(K.square(x_h_h_0-x_h_0)) + K.mean(K.square(x_h_1-real_input))
+    model = Model([real_input, latent_input], [x_h_1, x_h_h_0])
+    model.add_loss(loss)
+    model.compile(optimizer=AdamWithWeightnorm(lr=0.0001, beta_1=0.5), loss=None)
+    return model, encoder
+    
