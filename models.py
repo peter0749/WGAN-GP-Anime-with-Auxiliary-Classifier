@@ -85,7 +85,7 @@ def up_bilinear():
         return x
     return block
 
-def residual_discriminator(h=128, w=128, c=3, k=4, dropout_rate=0.1, as_classifier=0):
+def residual_discriminator(h=128, w=128, c=3, k=4, dropout_rate=0.1, as_classifier=0, return_hidden=False):
 
     inputs = Input(shape=(h,w,c)) # 32x32@c
 
@@ -97,6 +97,8 @@ def residual_discriminator(h=128, w=128, c=3, k=4, dropout_rate=0.1, as_classifi
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
+    h1 = x
+    
     # block 2:
     x = conv(128, k, 2, pad='same') (x) # 8x8@128
     x = LeakyReLU(0.2) (x)
@@ -107,6 +109,8 @@ def residual_discriminator(h=128, w=128, c=3, k=4, dropout_rate=0.1, as_classifi
     x = LeakyReLU(0.2) (x)
     x = Dropout(dropout_rate) (x)
     
+    h2 = x
+    
     # block 3:
     x = conv(256, k, 2) (x) # 2x2@256
     x = LeakyReLU(0.2) (x)
@@ -115,13 +119,15 @@ def residual_discriminator(h=128, w=128, c=3, k=4, dropout_rate=0.1, as_classifi
     # block 4:
     x = _res_conv(512, k, dropout_rate) (x) # 2x2@512
     
+    h3 = x
+    
     hidden = Flatten() (x) # 2*2*512
     
     if as_classifier>0:
         out = Dense(as_classifier, kernel_regularizer=l2(0.001), kernel_initializer='he_normal', activation='softmax') (hidden)
     else:
         out = Dense(1, kernel_regularizer=l2(0.001), kernel_initializer='he_normal') (hidden)
-    return Model([inputs], [out])
+    return Model([inputs], [out, h1, h2, h3]) if return_hidden else Model([inputs], [out])
 
 def residual_encoder(h=128, w=128, c=3, latent_dim=100, k=4, dropout_rate=0.1):
 
@@ -252,8 +258,8 @@ def wgangp_conditional(h=128, w=128, c=3, latent_dim=2, condition_dim=10, epsilo
     t_h, t_w = h//16, w//16
     generator = residual_decoder(t_h, t_w, c=c, latent_dim=latent_dim+condition_dim, dropout_rate=dropout_rate)
     
-    discriminator = residual_discriminator(h=h,w=w,c=c,dropout_rate=dropout_rate)
-    classifier = residual_discriminator(h=h,w=w,c=c,dropout_rate=dropout_rate, as_classifier=condition_dim)
+    discriminator = residual_discriminator(h=h,w=w,c=c,dropout_rate=dropout_rate, return_hidden=True)
+    classifier = residual_discriminator(h=h,w=w,c=c,dropout_rate=dropout_rate, as_classifier=condition_dim, return_hidden=True)
     for layer in discriminator.layers:
         layer.trainable = False
     discriminator.trainable = False
@@ -264,8 +270,8 @@ def wgangp_conditional(h=128, w=128, c=3, latent_dim=2, condition_dim=10, epsilo
     generator_input = Input(shape=(latent_dim+condition_dim,))
     generator_layers = generator(generator_input)
     
-    discriminator_layers_for_generator = discriminator(generator_layers)
-    classifier_layers_for_generator    = classifier(generator_layers)
+    discriminator_layers_for_generator = discriminator(generator_layers)[0]
+    classifier_layers_for_generator    = classifier(generator_layers)[0]
     
     generator_model = Model(inputs=[generator_input], outputs=[discriminator_layers_for_generator, classifier_layers_for_generator])
     generator_model.add_loss(K.mean(discriminator_layers_for_generator))
@@ -274,12 +280,9 @@ def wgangp_conditional(h=128, w=128, c=3, latent_dim=2, condition_dim=10, epsilo
     # Now that the generator_model is compiled, we can make the discriminator layers trainable.
     for layer in discriminator.layers:
         layer.trainable = True
-    for layer in classifier.layers:
-        layer.trainable = True
     for layer in generator.layers:
         layer.trainable = False
     discriminator.trainable = True
-    classifier.trainable = True
     generator.trainable = False
 
     # The discriminator_model is more complex. It takes both real image samples and random noise seeds as input.
@@ -289,19 +292,30 @@ def wgangp_conditional(h=128, w=128, c=3, latent_dim=2, condition_dim=10, epsilo
     real_samples = Input(shape=(h, w, c))
     generator_input_for_discriminator = Input(shape=(latent_dim+condition_dim,))
     generated_samples_for_discriminator = generator(generator_input_for_discriminator)
-    discriminator_output_from_generator = discriminator(generated_samples_for_discriminator)
-    discriminator_output_from_real_samples = discriminator(real_samples)
+    discriminator_output_from_generator = discriminator(generated_samples_for_discriminator)[0]
     
-    classifier_output_from_real_samples = classifier(real_samples)
+    discriminator_output_from_real_samples, d0, d1, d2 = discriminator(real_samples)
+    classifier_output_from_real_samples, c0, c1, c2 = classifier(real_samples)
+    
+    ds = K.concatenate([K.flatten(d0), K.flatten(d1), K.flatten(d2)], axis=-1)
+    cs = K.concatenate([K.flatten(c0), K.flatten(c1), K.flatten(c2)], axis=-1)
+    
+    c_loss = .1 * K.mean(K.square(ds-cs))
 
     averaged_samples = RandomWeightedAverage()([real_samples, generated_samples_for_discriminator])
-    averaged_samples_out = discriminator(averaged_samples)
+    averaged_samples_out = discriminator(averaged_samples)[0]
     
     discriminator_model = Model([real_samples, generator_input_for_discriminator], [discriminator_output_from_real_samples, discriminator_output_from_generator, averaged_samples_out])
     discriminator_model.add_loss(K.mean(discriminator_output_from_real_samples) - K.mean(discriminator_output_from_generator) + gradient_penalty_loss(averaged_samples_out, averaged_samples, GRADIENT_PENALTY_WEIGHT))
+    discriminator_model.add_loss(c_loss, inputs=[discriminator])
     discriminator_model.compile(optimizer=optimizer_d, loss=None)
     
+    for layer in classifier.layers:
+        layer.trainable = True
+    classifier.trainable = True
+    
     classifier_model = Model([real_samples], [classifier_output_from_real_samples])
+    classifier_model.add_loss(c_loss, inputs=[classifier])
     classifier_model.compile(optimizer=optimizer_c, loss='categorical_crossentropy')
 
     return generator_model, discriminator_model, classifier_model, generator, discriminator, classifier
