@@ -48,7 +48,7 @@ EPOCHS = args.epochs
 h, w, c = decoder.output_shape[-3:]
 latent_dim = decoder.input_shape[-1]
 
-train_generator = data_generator(args.dataset, height=h, width=w, channel=c, shuffle=True, normalize=not use_data_augmentation, save_tags=False)
+train_generator = data_generator(args.dataset, height=h, width=w, channel=c, batch_size=BS, shuffle=True, normalize=not use_data_augmentation, save_tags=False)
 N_CLASS = len(train_generator.tags)
 print('This dataset has %d unique tags'%N_CLASS)
 

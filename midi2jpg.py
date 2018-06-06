@@ -8,7 +8,7 @@ from PIL import Image
 lower_bound=34
 upper_bound=97
 bounded=upper_bound-lower_bound+1 # 64
-segLen=64
+segLen=96
 
 def Tempo2BPM(x):
     ret = x.data[2] | x.data[1]<<8 | x.data[0]<<16
