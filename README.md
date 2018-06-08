@@ -4,7 +4,7 @@ WGAN-GP with Auxiliary Classifier:
 
 Anime face interpolation in latent space:
 
-[![](assets/wgan-ac.gif)](https://youtu.be/X1ZSdN3p-Xo)
+[![](assets/wgan-ac.gif)](https://www.youtube.com/watch?v=b_2aBGB1P9o)
 
 [weights](https://github.com/peter0749/WGAN-GP-Anime-with-Auxiliary-Classifier/releases/download/0.3.0/wgan-ac-anime.7z)
 
