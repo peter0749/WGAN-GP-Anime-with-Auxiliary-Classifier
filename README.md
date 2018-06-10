@@ -9,6 +9,7 @@ Anime face interpolation in latent space:
 [weights](https://github.com/peter0749/WGAN-GP-Anime-with-Auxiliary-Classifier/releases/download/0.3.0/acwgan_anime_128x128.zip)
 
 Back to latent space:
+
 ![](assets/back_to_z.gif)
 
 mnist:
