@@ -12,6 +12,10 @@ Back to latent space:
 
 ![](assets/back_to_z.gif)
 
+Simple Image Morphing based on optical flow:
+
+[![](assets/morphing.gif)](https://www.youtube.com/watch?v=0TgLGvA4LUM)
+
 mnist:
 
 ![mnist_conditional](assets/mnist_conditional.gif)
