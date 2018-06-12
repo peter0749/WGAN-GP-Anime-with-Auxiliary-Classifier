@@ -36,7 +36,7 @@ CelebA faces:
 
 ![](assets/celeba_64x64.jpg)
 
-![weights](https://github.com/peter0749/WGAN-GP-Anime-with-Auxiliary-Classifier/releases/download/0.3.0/CelebA_WGAN-GP.zip)
+[weights](https://github.com/peter0749/WGAN-GP-Anime-with-Auxiliary-Classifier/releases/download/0.3.0/CelebA_WGAN-GP.zip)
 
 Face morphing:
 
