@@ -36,7 +36,7 @@ CelebA faces:
 
 Face morphing:
 
-[![](assets/morphing.gif)](https://www.youtube.com/watch?v=A8JOjdcKi78)
+[![](assets/face_morphing.gif)](https://www.youtube.com/watch?v=A8JOjdcKi78)
 
 Training:
 [![training](assets/ite_141500.jpg)](https://youtu.be/5WlgixPlwDA)
