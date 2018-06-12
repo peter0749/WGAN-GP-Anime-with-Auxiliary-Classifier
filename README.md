@@ -32,7 +32,7 @@ WGAN-GP:
 
 [weights_96x96](https://github.com/peter0749/WGAN-GP-Anime-with-Auxiliary-Classifier/releases/download/0.3.0/anime_96x96.7z)
 
-CelebA faces:
+CelebA faces (41 epochs):
 
 ![](assets/celeba_64x64.jpg)
 
