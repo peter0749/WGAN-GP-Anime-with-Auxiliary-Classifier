@@ -32,6 +32,12 @@ WGAN-GP:
 
 [weights_96x96](https://github.com/peter0749/WGAN-GP-Anime/releases/download/0.2.0/anime_96x96.7z)
 
+CelebA faces:
+
+Face morphing:
+
+[![](assets/morphing.gif)](https://www.youtube.com/watch?v=A8JOjdcKi78)
+
 Training:
 [![training](assets/ite_141500.jpg)](https://youtu.be/5WlgixPlwDA)
 
