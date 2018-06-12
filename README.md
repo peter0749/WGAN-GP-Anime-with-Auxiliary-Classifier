@@ -34,6 +34,8 @@ WGAN-GP:
 
 CelebA faces:
 
+![](assets/celeba_64x64.jpg)
+
 Face morphing:
 
 [![](assets/face_morphing.gif)](https://www.youtube.com/watch?v=A8JOjdcKi78)
