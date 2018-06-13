@@ -31,9 +31,20 @@ decoder = load_model(args.decoder, custom_objects={'tf':tf, 'PixelShuffler':Pixe
 encoder = load_model(args.encoder, custom_objects={'tf':tf, 'PixelShuffler':PixelShuffler, 'up_bilinear':up_bilinear}) if os.path.exists(args.encoder) else None
 img = (resize(imread(args.input), decoder.output_shape[-3:-1], preserve_range=True).astype(np.float32) - 127.5) / 127.5
 z_encoder = back_to_z(decoder, encoder)
+best_img = None
+best_z = None
+best_score = -1
 for i in range(args.runs):
     print('Runs: %d / %d'%(i+1, args.runs))
     z, img_reconstruct = z_encoder.get_z(img, args.std, iterations=args.iterations, return_img=True)
+    img_reconstruct = np.squeeze(img_reconstruct)
+    mse = np.mean(np.square(img_reconstruct-img))
+    if mse>best_score:
+        best_score = mse
+        best_z = z
+        best_img = img_reconstruct
     output_img = np.round(np.concatenate((np.squeeze(img), np.squeeze(img_reconstruct)), axis=1) * 127.5 + 127.5).astype(np.uint8)
     filename, ext = os.path.splitext(args.output)
     imsave(filename+'_%d'%i+ext, output_img)
+output_img = np.round(np.concatenate((np.squeeze(img), np.squeeze(best_img)), axis=1) * 127.5 + 127.5).astype(np.uint8)
+imsave(args.output, output_img)
