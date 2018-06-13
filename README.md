@@ -28,9 +28,19 @@ WGAN-GP:
 
 [![interpolation](assets/t_00.jpg)](https://youtu.be/Z3mCvaWJd6Y)
 
-[weights_128x128](https://github.com/peter0749/WGAN-GP-Anime/releases/download/0.2.0/anime_128x128.7z)
+[weights_128x128](https://github.com/peter0749/WGAN-GP-Anime-with-Auxiliary-Classifier/releases/download/0.3.0/anime_128x128.7z)
 
-[weights_96x96](https://github.com/peter0749/WGAN-GP-Anime/releases/download/0.2.0/anime_96x96.7z)
+[weights_96x96](https://github.com/peter0749/WGAN-GP-Anime-with-Auxiliary-Classifier/releases/download/0.3.0/anime_96x96.7z)
+
+CelebA faces (41 epochs):
+
+![](assets/celeba_64x64.jpg)
+
+[weights](https://github.com/peter0749/WGAN-GP-Anime-with-Auxiliary-Classifier/releases/download/0.3.0/CelebA_WGAN-GP.zip)
+
+Face morphing:
+
+[![](assets/face_morphing.gif)](https://www.youtube.com/watch?v=A8JOjdcKi78)
 
 Training:
 [![training](assets/ite_141500.jpg)](https://youtu.be/5WlgixPlwDA)
@@ -43,11 +53,11 @@ It can even generate MIDI loops!!
 
 [![midi2](https://img.youtube.com/vi/AX2lXaEue0Y/0.jpg)](https://www.youtube.com/watch?v=AX2lXaEue0Y)
 
-[weights_v1](https://github.com/peter0749/WGAN-GP-Anime/releases/download/0.2.0/midi_loop_generator.7z)
+[weights_v1](https://github.com/peter0749/WGAN-GP-Anime-with-Auxiliary-Classifier/releases/download/0.3.0/midi_loop_generator.7z)
 
-[weights_v2](https://github.com/peter0749/WGAN-GP-Anime/releases/download/0.2.0/midi_loop_generator_ver2.h5.zip)
+[weights_v2](https://github.com/peter0749/WGAN-GP-Anime-with-Auxiliary-Classifier/releases/download/0.3.0/midi_loop_generator_ver2.h5.zip)
 
-[conditional](https://github.com/peter0749/WGAN-GP-Anime/releases/download/0.2.0/conditional_midi_loop.zip)
+[conditional](https://github.com/peter0749/WGAN-GP-Anime-with-Auxiliary-Classifier/releases/download/0.3.0/conditional_midi_loop.zip)
 
 Generate mnist handwritten digits:
 
