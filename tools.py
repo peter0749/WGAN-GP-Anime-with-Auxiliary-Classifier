@@ -70,7 +70,10 @@ class back_to_z(object):
         if self.encoder is None:
             z = np.random.normal(0, std, self.latent_dim) # initial guess
         else:
-            z = self.encoder.predict(self.img[np.newaxis,...], batch_size=1)[0]
+            x = self.img[np.newaxis,...]
+            if x.ndim==3:
+                x = x[...,np.newaxis]
+            z = self.encoder.predict(x, batch_size=1)[0]
         for i in tqdm(range(iterations), total=iterations):
             z, min_val, info = fmin_l_bfgs_b(self.get_loss, z.flatten(), fprime=self.get_grad, maxfun=maxfun)
         return (z, self.generator.predict(z.reshape(1, self.latent_dim), verbose=0, batch_size=1)) if return_img else z
