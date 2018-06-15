@@ -176,21 +176,21 @@ def residual_decoder(h, w, c=3, k=4, latent_dim=2, dropout_rate=0.1):
     x = reshape # 2x2@512
     x = Dropout(dropout_rate) (x) # prevent overfitting
     
-    x = up_bilinear() (x) # 4x4@512
+    x = UpSampling2D() (x) # 4x4@512
     x = Conv2DTranspose(128, k, padding='same') (x) # 4x4@128
     x = LeakyReLU(0.2) (x)
     
-    x = up_bilinear() (x) # 8x8@128
+    x = UpSampling2D() (x) # 8x8@128
     x = Conv2DTranspose(128, k, padding='same') (x) # 8x8@128
     x = LeakyReLU(0.2) (x)
     
-    x = up_bilinear() (x) # 16x16@128
+    x = UpSampling2D() (x) # 16x16@128
     x = Conv2DTranspose(64, k, padding='same') (x)  # 16x16@64
     x = LeakyReLU(0.2) (x)
     
     x = _res_conv(64, k, dropout_rate) (x) # 16x16@64
     
-    x = PixelShuffler() (x) # 32x32@16
+    x = UpSampling2D() (x) 
     x = Conv2DTranspose(32, k, padding='same') (x)  # 32x32@32
     x = LeakyReLU(0.2) (x)
     
