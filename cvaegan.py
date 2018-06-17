@@ -289,7 +289,7 @@ class CVAEGAN(object):
         x = Dense(1024, kernel_regularizer=l2(0.001))(x)
         x = LeakyReLU(0.2) (x)
 
-        x = Dense(output_dims, kernel_regularizer=l2(0.001), activity_regularizer=l2(0.001))(x)
+        x = Dense(output_dims, kernel_regularizer=l2(0.001))(x)
 
         return Model([x_inputs, c_inputs], x)
 
