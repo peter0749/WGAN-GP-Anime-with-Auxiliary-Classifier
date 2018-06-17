@@ -230,7 +230,7 @@ class CVAEGAN(object):
         self.cls_trainer = Model(inputs=[x_r, c],
                                  outputs=[c_loss])
         self.cls_trainer.compile(loss=None,
-                                 optimizer=Adam(lr=2.0e-4, beta_1=0.5, clipvalue=0.8))
+                                 optimizer=Adam(lr=1e-4, beta_1=0.5, clipvalue=0.8))
         self.cls_trainer.summary()
 
         # Build discriminator trainer
@@ -242,7 +242,7 @@ class CVAEGAN(object):
         self.dis_trainer = Model(inputs=[x_r, c, z_p],
                                  outputs=[d_loss])
         self.dis_trainer.compile(loss=None,
-                                 optimizer=Adam(lr=2.0e-4, beta_1=0.5, clipvalue=0.8))
+                                 optimizer=Adam(lr=1e-4, beta_1=0.5, clipvalue=0.8))
         self.dis_trainer.summary()
 
         # Build generator trainer
@@ -254,7 +254,7 @@ class CVAEGAN(object):
         self.dec_trainer = Model(inputs=[x_r, c, z_p],
                                  outputs=[g_loss, gd_loss, gc_loss])
         self.dec_trainer.compile(loss=None,
-                                 optimizer=Adam(lr=2.0e-4, beta_1=0.5, clipvalue=0.8))
+                                 optimizer=Adam(lr=1e-4, beta_1=0.5, clipvalue=0.8))
 
         # Build autoencoder
         set_trainable(self.f_enc, True)
@@ -265,7 +265,7 @@ class CVAEGAN(object):
         self.enc_trainer = Model(inputs=[x_r, c, z_p],
                                 outputs=[g_loss, kl_loss])
         self.enc_trainer.compile(loss=None,
-                                 optimizer=Adam(lr=2.0e-4, beta_1=0.5, clipvalue=0.8))
+                                 optimizer=Adam(lr=1e-4, beta_1=0.5, clipvalue=0.8))
         self.enc_trainer.summary()
 
     def build_encoder(self, output_dims, k=4):
