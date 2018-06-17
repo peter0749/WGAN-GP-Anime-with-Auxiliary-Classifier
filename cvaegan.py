@@ -118,7 +118,7 @@ class KLLossLayer(Layer):
         super(KLLossLayer, self).__init__(**kwargs)
 
     def lossfun(self, z_avg, z_log_var):
-        kl_loss = -0.5 * K.mean(1.0 + z_log_var - K.square(z_avg) - K.exp(z_log_var))
+        kl_loss = K.clip(-0.5 * K.mean(1.0 + z_log_var - K.square(z_avg) - K.exp(z_log_var)), -100.0, 100.0)
         return kl_loss * self.kl_loss_weight
 
     def call(self, inputs):
