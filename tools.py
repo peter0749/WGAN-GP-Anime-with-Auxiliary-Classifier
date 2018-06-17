@@ -282,7 +282,7 @@ def generate_images_cvaegan(generator, path, h, w, c, latent_dim, nr, nc, iterat
             figure[h*ri:h*(ri+1), w*ci:w*(ci+1)] = generator.predict([noise, label], verbose=0, batch_size=1)[0]
     figure = np.squeeze(np.clip(figure * 127.5 + 127.5, 0, 255).astype(np.uint8))
     imsave(os.path.join(path, 'ite_{:02d}.jpg'.format(iteration)), figure)
-    generator.save(os.path.join(path, 'weights_ite_{:02d}.h5'.format(iteration)))
+    # generator.save(os.path.join(path, 'weights_ite_{:02d}.h5'.format(iteration)))
 
 def generate_images_cyclegan(generator_A, generator_B, img_A, img_B, path, h, w, c_A, c_B, iteration):
     img_A2B = generator_A.predict(img_A[np.newaxis,...], verbose=0, batch_size=1)[0]
