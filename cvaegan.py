@@ -23,12 +23,13 @@ def sample_normal(args):
 class ClassifierLossLayer(Layer):
     __name__ = 'classifier_loss_layer'
 
-    def __init__(self, **kwargs):
+    def __init__(self, label_smooth=.9, **kwargs):
         self.is_placeholder = True
+        self.label_smooth = label_smooth
         super(ClassifierLossLayer, self).__init__(**kwargs)
 
     def lossfun(self, c_true, c_pred):
-        return K.mean(keras.metrics.categorical_crossentropy(c_true, c_pred))
+        return K.mean(keras.metrics.categorical_crossentropy(c_true * self.label_smooth, c_pred))
 
     def call(self, inputs):
         c_true = inputs[0]
@@ -40,12 +41,13 @@ class ClassifierLossLayer(Layer):
 class DiscriminatorLossLayer(Layer):
     __name__ = 'discriminator_loss_layer'
 
-    def __init__(self, **kwargs):
+    def __init__(self, label_smooth=.9, **kwargs):
         self.is_placeholder = True
+        self.label_smooth = label_smooth
         super(DiscriminatorLossLayer, self).__init__(**kwargs)
 
     def lossfun(self, y_real, y_fake_f, y_fake_p):
-        y_pos = K.ones_like(y_real)
+        y_pos = K.ones_like(y_real) * self.label_smooth
         y_neg = K.zeros_like(y_real)
         loss_real = keras.metrics.binary_crossentropy(y_pos, y_real)
         loss_fake_f = keras.metrics.binary_crossentropy(y_neg, y_fake_f)

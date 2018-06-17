@@ -19,7 +19,7 @@ import keras
 from keras import backend as K
 K.set_session(session)
 from keras.models import *
-from keras.datasets import mnist
+from keras.datasets import fashion_mnist
 from tools import *
 from cvaegan import CVAEGAN
 from skimage.io import imsave
@@ -31,7 +31,7 @@ EPOCHS = args.epochs
 w, h, c = 32, 32, 1
 latent_dim = 100
 
-(x_train, y_train), (___, __) = mnist.load_data()
+(x_train, y_train), (___, __) = fashion_mnist.load_data()
 x_train = np.squeeze(x_train.astype(np.float32)-127.5) / 127.5
 x_train = np.pad(x_train, ((0,0),(2,2),(2,2)), 'constant', constant_values=0)[...,np.newaxis]
 
