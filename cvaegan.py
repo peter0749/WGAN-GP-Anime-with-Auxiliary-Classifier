@@ -292,12 +292,13 @@ class CVAEGAN(object):
         c_inputs = Input(shape=(self.num_attrs,))
         z = Concatenate()([z_inputs, c_inputs])
 
-        w = self.input_shape[0] // (2 ** 4)
-        x = Dense(w * w * 512)(z)
+        w = self.input_shape[1] // (2 ** 4)
+        h = self.input_shape[0] // (2 ** 4)
+        x = Dense(h * w * 512)(z)
         # x = BatchNormalization()(x)
         x = LeakyReLU(0.2) (x)
 
-        x = Reshape((w, w, 512))(x)
+        x = Reshape((h, w, 512))(x)
 
         x = up_bilinear() (x) 
         x = Conv2DTranspose(512, k, padding='same') (x) 
