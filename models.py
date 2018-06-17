@@ -21,6 +21,11 @@ def RandomWeightedAverage():
         return (weights * input1) + ((1 - weights) * input2)
     return Lambda(block)
 
+def set_trainable(model, trainable):
+    for layer in model.layers:
+        layer.trainable=trainable
+    model.trainable=trainable
+
 def gradient_penalty_loss(y_pred, averaged_samples, gradient_penalty_weight):
     """Calculates the gradient penalty loss for a batch of "averaged" samples.
     In Improved WGANs, the 1-Lipschitz constraint is enforced by adding a term to the loss function
@@ -51,12 +56,6 @@ def gradient_penalty_loss(y_pred, averaged_samples, gradient_penalty_weight):
     gradient_penalty = gradient_penalty_weight * K.square(1 - gradient_l2_norm)
     # return the mean as loss over all the batch samples
     return K.mean(gradient_penalty)
-
-def sampling(args, latent_dim=2, epsilon_std=1.0):
-    z_mean, z_log_var = args
-    epsilon = K.random_normal(shape=(K.shape(z_mean)[0], latent_dim),
-                          mean=0., stddev=epsilon_std)
-    return z_mean + K.exp(z_log_var) * epsilon
 
 def conv(f, k=3, stride=1, act=None, pad='same'):
     return Conv2D(f, (k, k), strides=(stride,stride), activation=act, kernel_initializer='he_normal', padding=pad)

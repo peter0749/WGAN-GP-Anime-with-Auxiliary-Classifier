@@ -1,0 +1,373 @@
+import os
+import numpy as np
+
+import keras
+from keras.engine.topology import Layer
+from keras.models import Model
+from keras.layers import Input, Flatten, Dense, Lambda, Reshape, Concatenate
+from keras.layers import Activation, LeakyReLU, ELU
+from keras.layers import Conv2D, Conv2DTranspose, UpSampling2D
+# from keras.optimizers import Adam
+from weightnorm import AdamWithWeightnorm as Adam
+from keras import backend as K
+
+from models import conv, _res_conv, up_bilinear, set_trainable
+
+def sample_normal(args):
+    z_avg, z_log_var = args
+    batch_size = K.shape(z_avg)[0]
+    z_dims = K.shape(z_avg)[1]
+    eps = K.random_normal(shape=(batch_size, z_dims), mean=0.0, stddev=1.0)
+    return z_avg + K.exp(z_log_var / 2.0) * eps
+
+class ClassifierLossLayer(Layer):
+    __name__ = 'classifier_loss_layer'
+
+    def __init__(self, **kwargs):
+        self.is_placeholder = True
+        super(ClassifierLossLayer, self).__init__(**kwargs)
+
+    def lossfun(self, c_true, c_pred):
+        return K.mean(keras.metrics.categorical_crossentropy(c_true, c_pred))
+
+    def call(self, inputs):
+        c_true = inputs[0]
+        c_pred = inputs[1]
+        loss = self.lossfun(c_true, c_pred)
+        self.add_loss(loss, inputs=inputs)
+        return c_true
+
+class DiscriminatorLossLayer(Layer):
+    __name__ = 'discriminator_loss_layer'
+
+    def __init__(self, **kwargs):
+        self.is_placeholder = True
+        super(DiscriminatorLossLayer, self).__init__(**kwargs)
+
+    def lossfun(self, y_real, y_fake_f, y_fake_p):
+        y_pos = K.ones_like(y_real)
+        y_neg = K.zeros_like(y_real)
+        loss_real = keras.metrics.binary_crossentropy(y_pos, y_real)
+        loss_fake_f = keras.metrics.binary_crossentropy(y_neg, y_fake_f)
+        loss_fake_p = keras.metrics.binary_crossentropy(y_neg, y_fake_p)
+        return K.mean(loss_real + loss_fake_f + loss_fake_p)
+
+    def call(self, inputs):
+        y_real = inputs[0]
+        y_fake_f = inputs[1]
+        y_fake_p = inputs[2]
+        loss = self.lossfun(y_real, y_fake_f, y_fake_p)
+        self.add_loss(loss, inputs=inputs)
+
+        return y_real
+
+class GeneratorLossLayer(Layer):
+    __name__ = 'generator_loss_layer'
+
+    def __init__(self, **kwargs):
+        self.is_placeholder = True
+        super(GeneratorLossLayer, self).__init__(**kwargs)
+
+    def lossfun(self, x_r, x_f, f_D_x_f, f_D_x_r, f_C_x_r, f_C_x_f):
+        loss_x = K.mean(K.square(x_r - x_f))
+        loss_d = K.mean(K.square(f_D_x_r - f_D_x_f))
+        loss_c = K.mean(K.square(f_C_x_r - f_C_x_f))
+
+        return loss_x + loss_d + loss_c
+
+    def call(self, inputs):
+        x_r = inputs[0]
+        x_f = inputs[1]
+        f_D_x_r = inputs[2]
+        f_D_x_f = inputs[3]
+        f_C_x_r = inputs[4]
+        f_C_x_f = inputs[5]
+        loss = self.lossfun(x_r, x_f, f_D_x_r, f_D_x_f, f_C_x_r, f_C_x_f)
+        self.add_loss(loss, inputs=inputs)
+
+        return x_r
+
+class FeatureMatchingLayer(Layer):
+    __name__ = 'feature_matching_layer'
+
+    def __init__(self, **kwargs):
+        self.is_placeholder = True
+        super(FeatureMatchingLayer, self).__init__(**kwargs)
+
+    def lossfun(self, f1, f2):
+        f1_avg = K.mean(f1, axis=0)
+        f2_avg = K.mean(f2, axis=0)
+        return 0.5 * K.mean(K.square(f1_avg - f2_avg))
+
+    def call(self, inputs):
+        f1 = inputs[0]
+        f2 = inputs[1]
+        loss = self.lossfun(f1, f2)
+        self.add_loss(loss, inputs=inputs)
+
+        return f1
+
+class KLLossLayer(Layer):
+    __name__ = 'kl_loss_layer'
+
+    def __init__(self, **kwargs):
+        self.is_placeholder = True
+        super(KLLossLayer, self).__init__(**kwargs)
+
+    def lossfun(self, z_avg, z_log_var):
+        kl_loss = -0.5 * K.mean(1.0 + z_log_var - K.square(z_avg) - K.exp(z_log_var))
+        return kl_loss
+
+    def call(self, inputs):
+        z_avg = inputs[0]
+        z_log_var = inputs[1]
+        loss = self.lossfun(z_avg, z_log_var)
+        self.add_loss(loss, inputs=inputs)
+
+        return z_avg
+
+class CVAEGAN(object):
+    def __init__(self,
+        input_shape=(64, 64, 3),
+        num_attrs=40,
+        z_dims = 128,
+        name='cvaegan',
+        **kwargs
+    ):
+
+        self.input_shape = input_shape
+        self.num_attrs = num_attrs
+        self.z_dims = z_dims
+
+        self.f_enc = None
+        self.f_dec = None
+        self.f_dis = None
+        self.f_cls = None
+        self.enc_trainer = None
+        self.dec_trainer = None
+        self.dis_trainer = None
+        self.cls_trainer = None
+
+        self.build_model()
+
+    def train_on_batch(self, x_batch):
+        x_r, c = x_batch
+
+        batchsize = len(x_r)
+        z_p = np.random.normal(size=(batchsize, self.z_dims)).astype('float32')
+
+        # Train autoencoder
+        self.enc_trainer.train_on_batch([x_r, c, z_p], None)
+
+        # Train generator
+        g_loss = self.dec_trainer.train_on_batch([x_r, c, z_p], None)
+
+        # Train classifier
+        self.cls_trainer.train_on_batch([x_r, c], None)
+
+        # Train discriminator
+        d_loss = self.dis_trainer.train_on_batch([x_r, c, z_p], None)
+
+        loss = {
+            'g_loss': g_loss,
+            'd_loss': d_loss
+        }
+        return loss
+
+    def predict(self, z_samples):
+        return self.f_dec.predict(z_samples)
+
+    def build_model(self):
+        self.f_enc = self.build_encoder(output_dims=self.z_dims*2)
+        self.f_dec = self.build_decoder()
+        self.f_dis = self.build_discriminator()
+        self.f_cls = self.build_classifier()
+
+        # Algorithm
+        x_r = Input(shape=self.input_shape)
+        c = Input(shape=(self.num_attrs,))
+        z_params = self.f_enc([x_r, c])
+
+        z_avg = Lambda(lambda x: x[:, :self.z_dims], output_shape=(self.z_dims,))(z_params)
+        z_log_var = Lambda(lambda x: x[:, self.z_dims:], output_shape=(self.z_dims,))(z_params)
+        z = Lambda(sample_normal, output_shape=(self.z_dims,))([z_avg, z_log_var])
+
+        kl_loss = KLLossLayer()([z_avg, z_log_var])
+
+        z_p = Input(shape=(self.z_dims,))
+
+        x_f = self.f_dec([z, c])
+        x_p = self.f_dec([z_p, c])
+
+        y_r, f_D_x_r = self.f_dis(x_r)
+        y_f, f_D_x_f = self.f_dis(x_f)
+        y_p, f_D_x_p = self.f_dis(x_p)
+
+        d_loss = DiscriminatorLossLayer()([y_r, y_f, y_p])
+
+        c_r, f_C_x_r = self.f_cls(x_r)
+        c_f, f_C_x_f = self.f_cls(x_f)
+        c_p, f_C_x_p = self.f_cls(x_p)
+
+        g_loss = GeneratorLossLayer()([x_r, x_f, f_D_x_r, f_D_x_f, f_C_x_r, f_C_x_f])
+        gd_loss = FeatureMatchingLayer()([f_D_x_r, f_D_x_p])
+        gc_loss = FeatureMatchingLayer()([f_C_x_r, f_C_x_p])
+
+        c_loss = ClassifierLossLayer()([c, c_r])
+
+        # Build classifier trainer
+        set_trainable(self.f_enc, False)
+        set_trainable(self.f_dec, False)
+        set_trainable(self.f_dis, False)
+        set_trainable(self.f_cls, True)
+
+        self.cls_trainer = Model(inputs=[x_r, c],
+                                 outputs=[c_loss])
+        self.cls_trainer.compile(loss=None,
+                                 optimizer=Adam(lr=2.0e-4, beta_1=0.5))
+        self.cls_trainer.summary()
+
+        # Build discriminator trainer
+        set_trainable(self.f_enc, False)
+        set_trainable(self.f_dec, False)
+        set_trainable(self.f_dis, True)
+        set_trainable(self.f_cls, False)
+
+        self.dis_trainer = Model(inputs=[x_r, c, z_p],
+                                 outputs=[d_loss])
+        self.dis_trainer.compile(loss=None,
+                                 optimizer=Adam(lr=2.0e-4, beta_1=0.5))
+        self.dis_trainer.summary()
+
+        # Build generator trainer
+        set_trainable(self.f_enc, False)
+        set_trainable(self.f_dec, True)
+        set_trainable(self.f_dis, False)
+        set_trainable(self.f_cls, False)
+
+        self.dec_trainer = Model(inputs=[x_r, c, z_p],
+                                 outputs=[g_loss, gd_loss, gc_loss])
+        self.dec_trainer.compile(loss=None,
+                                 optimizer=Adam(lr=2.0e-4, beta_1=0.5))
+
+        # Build autoencoder
+        set_trainable(self.f_enc, True)
+        set_trainable(self.f_dec, False)
+        set_trainable(self.f_dis, False)
+        set_trainable(self.f_cls, False)
+
+        self.enc_trainer = Model(inputs=[x_r, c, z_p],
+                                outputs=[g_loss, kl_loss])
+        self.enc_trainer.compile(loss=None,
+                                optimizer=Adam(lr=2.0e-4, beta_1=0.5))
+        self.enc_trainer.summary()
+
+    def build_encoder(self, output_dims, k=4):
+        x_inputs = Input(shape=self.input_shape)
+        c_inputs = Input(shape=(self.num_attrs,))
+
+        c = Reshape((1, 1, self.num_attrs))(c_inputs)
+        c = UpSampling2D(size=self.input_shape[:2])(c)
+        x = Concatenate(axis=-1)([x_inputs, c])
+
+        x = conv(f=128, k=k, stride=2)(x)
+        x = LeakyReLU(0.2) (x)
+        x = conv(f=256, k=k, stride=2)(x)
+        x = LeakyReLU(0.2) (x)
+        x = conv(f=256, k=k, stride=2)(x)
+        x = LeakyReLU(0.2) (x)
+        x = conv(f=512, k=k, stride=2)(x)
+        x = LeakyReLU(0.2) (x)
+
+        x = Flatten()(x)
+        x = Dense(1024)(x)
+        x = LeakyReLU(0.2) (x)
+
+        x = Dense(output_dims)(x)
+
+        return Model([x_inputs, c_inputs], x)
+
+    def build_decoder(self, k=4):
+        z_inputs = Input(shape=(self.z_dims,))
+        c_inputs = Input(shape=(self.num_attrs,))
+        z = Concatenate()([z_inputs, c_inputs])
+
+        w = self.input_shape[0] // (2 ** 4)
+        x = Dense(w * w * 512)(z)
+        # x = BatchNormalization()(x)
+        x = LeakyReLU(0.2) (x)
+
+        x = Reshape((w, w, 512))(x)
+
+        x = up_bilinear() (x) 
+        x = Conv2DTranspose(512, k, padding='same') (x) 
+        x = LeakyReLU(0.2) (x)
+        x = up_bilinear() (x) 
+        x = Conv2DTranspose(256, k, padding='same') (x) 
+        x = LeakyReLU(0.2) (x)
+        x = up_bilinear() (x) 
+        x = Conv2DTranspose(256, k, padding='same') (x) 
+        x = LeakyReLU(0.2) (x)
+        x = up_bilinear() (x) 
+        x = Conv2DTranspose(128, k, padding='same') (x) 
+        x = LeakyReLU(0.2) (x)
+
+        d = self.input_shape[2]
+        
+        x = Conv2DTranspose(d, k, padding='same', activation='tanh') (x) 
+        return Model([z_inputs, c_inputs], x)
+
+    def build_discriminator(self, k=4):
+        inputs = Input(shape=self.input_shape)
+        
+        x = inputs
+
+        x = conv(f=128, k=k, stride=2)(x)
+        x = LeakyReLU(0.2) (x)
+        x = conv(f=256, k=k, stride=2)(x)
+        x = LeakyReLU(0.2) (x)
+        x = conv(f=256, k=k, stride=2)(x)
+        x = LeakyReLU(0.2) (x)
+        x = conv(f=512, k=k, stride=2)(x)
+        x = LeakyReLU(0.2) (x)
+
+        f = Flatten()(x)
+        x = Dense(1024)(f)
+        x = LeakyReLU(0.2) (x)
+
+        x = Dense(1, activation='sigmoid')(x)
+
+        return Model(inputs, [x, f])
+
+    def build_classifier(self):
+        inputs = Input(shape=self.input_shape)
+
+        x = inputs
+        
+        x = conv(f=128, k=4, stride=2)(x)
+        x = LeakyReLU(0.2) (x)
+        x = conv(f=256, k=4, stride=2)(x)
+        x = LeakyReLU(0.2) (x)
+        x = conv(f=256, k=4, stride=2)(x)
+        x = LeakyReLU(0.2) (x)
+        x = conv(f=512, k=4, stride=2)(x)
+        x = LeakyReLU(0.2) (x)
+
+        f = Flatten()(x)
+        x = Dense(1024)(f)
+        x = LeakyReLU(0.2) (x)
+
+        x = Dense(self.num_attrs, activation='softmax')(x)
+
+        return Model(inputs, [x, f])
+    
+    def save_models(self, prefix, idx):
+        if not os.path.exists(prefix):
+            os.makedirs(prefix)
+        self.f_enc.save(os.path.join(prefix, 'iteration_%d_encoder.h5'.format(idx)))
+        self.f_dec.save(os.path.join(prefix, 'iteration_%d_decoder.h5'.format(idx)))
+        self.f_dis.save(os.path.join(prefix, 'iteration_%d_discriminator.h5'.format(idx)))
+        self.f_cls.save(os.path.join(prefix, 'iteration_%d_classifier.h5'.format(idx)))
+    
+    def return_models(self):
+        return self.f_enc, self.f_dec, self.f_dis, self.f_cls
