@@ -110,13 +110,14 @@ class FeatureMatchingLayer(Layer):
 class KLLossLayer(Layer):
     __name__ = 'kl_loss_layer'
 
-    def __init__(self, **kwargs):
+    def __init__(self, weight=1.0, **kwargs):
         self.is_placeholder = True
+        self.kl_loss_weight = weight
         super(KLLossLayer, self).__init__(**kwargs)
 
     def lossfun(self, z_avg, z_log_var):
         kl_loss = -0.5 * K.mean(1.0 + z_log_var - K.square(z_avg) - K.exp(z_log_var))
-        return kl_loss
+        return kl_loss * self.kl_loss_weight
 
     def call(self, inputs):
         z_avg = inputs[0]
@@ -131,6 +132,7 @@ class CVAEGAN(object):
         input_shape=(64, 64, 3),
         num_attrs=40,
         z_dims = 128,
+        kl_weight = 1.0,
         name='cvaegan',
         **kwargs
     ):
@@ -138,6 +140,7 @@ class CVAEGAN(object):
         self.input_shape = input_shape
         self.num_attrs = num_attrs
         self.z_dims = z_dims
+        self.kl_weight = kl_weight
 
         self.f_enc = None
         self.f_dec = None
@@ -192,7 +195,7 @@ class CVAEGAN(object):
         z_log_var = Lambda(lambda x: x[:, self.z_dims:], output_shape=(self.z_dims,))(z_params)
         z = Lambda(sample_normal, output_shape=(self.z_dims,))([z_avg, z_log_var])
 
-        kl_loss = KLLossLayer()([z_avg, z_log_var])
+        kl_loss = KLLossLayer(weight = self.kl_weight)([z_avg, z_log_var])
 
         z_p = Input(shape=(self.z_dims,))
 

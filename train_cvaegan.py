@@ -10,6 +10,8 @@ parser.add_argument('--channels', type=int, default=3, required=False,
                     help='channels')
 parser.add_argument('--z_dim', type=int, default=100, required=False,
                     help='latent dimension')
+parser.add_argument('--kl_weight', type=float, default=1.0, required=False,
+                    help='weight for kl loss')
 parser.add_argument('--batch_size', type=int, default=32, required=False,
                     help='batch size')
 parser.add_argument('--epochs', type=int, default=1000, required=False,
@@ -40,6 +42,7 @@ use_data_augmentation = not args.no_augmentation
 
 BS = args.batch_size
 EPOCHS = args.epochs
+KL_W = args.kl_weight
 w, h, c = args.width, args.height, args.channels
 latent_dim = args.z_dim
 D_ITER = 5
@@ -53,7 +56,7 @@ seq = get_imgaug()
 if not os.path.exists('./preview'):
     os.makedirs('./preview')
 
-trainer = CVAEGAN(input_shape=(h, w, c), num_attrs=N_CLASS, z_dims=latent_dim)  
+trainer = CVAEGAN(input_shape=(h, w, c), num_attrs=N_CLASS, z_dims=latent_dim, kl_weight=KL_W)  
 generator = trainer.return_models()[1]
 
 i_counter = 0
