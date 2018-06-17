@@ -35,7 +35,7 @@ class ClassifierLossLayer(Layer):
         c_true = inputs[0]
         c_pred = inputs[1]
         loss = self.lossfun(c_true, c_pred)
-        self.add_loss(loss, inputs=inputs)
+        self.add_loss(K.clip(loss, -100, 100), inputs=inputs)
         return c_true
 
 class DiscriminatorLossLayer(Layer):
@@ -59,7 +59,7 @@ class DiscriminatorLossLayer(Layer):
         y_fake_f = inputs[1]
         y_fake_p = inputs[2]
         loss = self.lossfun(y_real, y_fake_f, y_fake_p)
-        self.add_loss(loss, inputs=inputs)
+        self.add_loss(K.clip(loss, -100, 100), inputs=inputs)
 
         return y_real
 
@@ -85,7 +85,7 @@ class GeneratorLossLayer(Layer):
         f_C_x_r = inputs[4]
         f_C_x_f = inputs[5]
         loss = self.lossfun(x_r, x_f, f_D_x_r, f_D_x_f, f_C_x_r, f_C_x_f)
-        self.add_loss(loss, inputs=inputs)
+        self.add_loss(K.clip(loss, -100, 100), inputs=inputs)
 
         return x_r
 
@@ -105,7 +105,7 @@ class FeatureMatchingLayer(Layer):
         f1 = inputs[0]
         f2 = inputs[1]
         loss = self.lossfun(f1, f2)
-        self.add_loss(loss, inputs=inputs)
+        self.add_loss(K.clip(loss, -100, 100), inputs=inputs)
 
         return f1
 
