@@ -9,7 +9,7 @@ lower_bound=34
 upper_bound=97
 bounded=upper_bound-lower_bound+1 # 64
 segLen=96
-hopLen=48
+hopLen=96
 
 def Tempo2BPM(x):
     ret = x.data[2] | x.data[1]<<8 | x.data[0]<<16
@@ -67,7 +67,7 @@ for filename in os.listdir(prefix):
                 swLine[v.data[0]-lower_bound] = 0
     sheet_grid[sheet_grid>0] = 255
     if np.sum(sheet_grid)==0: continue
-    while np.sum(sheet_grid[-1,:])==0:
+    while len(sheet_grid)>0 and np.sum(sheet_grid[-1,:])==0:
         sheet_grid= np.delete(sheet_grid, -1, 0) ## trim 0
     sheet_grid = np.flip(np.transpose(np.clip(sheet_grid,0,255).astype(np.uint8), (1,0)), 0)
     for i in range(0, sheet_grid.shape[1]-segLen, hopLen): # alignment
