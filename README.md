@@ -61,4 +61,10 @@ It can even generate MIDI loops!!
 
 Generate mnist handwritten digits:
 
+WGAN-GP:
+
 ![mnist_demo](assets/mnist.jpg)
+
+CVAE-GAN:
+
+![](assets/cvaegan.jpg)
