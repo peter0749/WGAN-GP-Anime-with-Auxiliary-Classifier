@@ -6,6 +6,7 @@ from keras.engine.topology import Layer
 from keras.models import Model
 from keras.layers import Input, Flatten, Dense, Lambda, Reshape, Concatenate
 from keras.layers import Activation, LeakyReLU, ELU
+from keras.regularizers import l2
 from keras.layers import Conv2D, Conv2DTranspose, UpSampling2D
 # from keras.optimizers import Adam
 from weightnorm import AdamWithWeightnorm as Adam
@@ -285,10 +286,10 @@ class CVAEGAN(object):
         x = LeakyReLU(0.2) (x)
 
         x = Flatten()(x)
-        x = Dense(1024)(x)
+        x = Dense(1024, kernel_regularizer=l2(0.001))(x)
         x = LeakyReLU(0.2) (x)
 
-        x = Dense(output_dims)(x)
+        x = Dense(output_dims, kernel_regularizer=l2(0.001))(x)
 
         return Model([x_inputs, c_inputs], x)
 
@@ -299,7 +300,7 @@ class CVAEGAN(object):
 
         w = self.input_shape[1] // (2 ** 4)
         h = self.input_shape[0] // (2 ** 4)
-        x = Dense(h * w * 512)(z)
+        x = Dense(h * w * 512, kernel_regularizer=l2(0.001))(z)
         # x = BatchNormalization()(x)
         x = LeakyReLU(0.2) (x)
 
@@ -338,10 +339,10 @@ class CVAEGAN(object):
         x = LeakyReLU(0.2) (x)
 
         f = Flatten()(x)
-        x = Dense(1024)(f)
+        x = Dense(1024, kernel_regularizer=l2(0.001))(f)
         x = LeakyReLU(0.2) (x)
 
-        x = Dense(1, activation='sigmoid')(x)
+        x = Dense(1, activation='sigmoid', kernel_regularizer=l2(0.001))(x)
 
         return Model(inputs, [x, f])
 
@@ -360,10 +361,10 @@ class CVAEGAN(object):
         x = LeakyReLU(0.2) (x)
 
         f = Flatten()(x)
-        x = Dense(1024)(f)
+        x = Dense(1024, kernel_regularizer=l2(0.001))(f)
         x = LeakyReLU(0.2) (x)
 
-        x = Dense(self.num_attrs, activation='softmax')(x)
+        x = Dense(self.num_attrs, activation='softmax', kernel_regularizer=l2(0.001))(x)
 
         return Model(inputs, [x, f])
     
