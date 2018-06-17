@@ -365,10 +365,10 @@ class CVAEGAN(object):
     def save_models(self, prefix, idx):
         if not os.path.exists(prefix):
             os.makedirs(prefix)
-        self.f_enc.save(os.path.join(prefix, 'iteration_%d_encoder.h5'.format(idx)))
-        self.f_dec.save(os.path.join(prefix, 'iteration_%d_decoder.h5'.format(idx)))
-        self.f_dis.save(os.path.join(prefix, 'iteration_%d_discriminator.h5'.format(idx)))
-        self.f_cls.save(os.path.join(prefix, 'iteration_%d_classifier.h5'.format(idx)))
+        self.f_enc.save(os.path.join(prefix, 'iteration_{:d}_encoder.h5'.format(idx)))
+        self.f_dec.save(os.path.join(prefix, 'iteration_{:d}_decoder.h5'.format(idx)))
+        self.f_dis.save(os.path.join(prefix, 'iteration_{:d}_discriminator.h5'.format(idx)))
+        self.f_cls.save(os.path.join(prefix, 'iteration_{:d}_classifier.h5'.format(idx)))
     
     def return_models(self):
         return self.f_enc, self.f_dec, self.f_dis, self.f_cls
