@@ -50,9 +50,9 @@ class DiscriminatorLossLayer(Layer):
     def lossfun(self, y_real, y_fake_f, y_fake_p):
         y_pos = K.ones_like(y_real) * self.label_smooth
         y_neg = K.zeros_like(y_real)
-        loss_real = keras.metrics.binary_crossentropy(y_pos, y_real)
-        loss_fake_f = keras.metrics.binary_crossentropy(y_neg, y_fake_f)
-        loss_fake_p = keras.metrics.binary_crossentropy(y_neg, y_fake_p)
+        loss_real = keras.metrics.binary_crossentropy(y_pos, K.clip(y_real, K.epsilon(), 1.-K.epsilon()))
+        loss_fake_f = keras.metrics.binary_crossentropy(y_neg, K.clip(y_fake_f, K.epsilon(), 1.-K.epsilon()))
+        loss_fake_p = keras.metrics.binary_crossentropy(y_neg, K.clip(y_fake_p, K.epsilon(), 1.-K.epsilon()))
         return K.mean(loss_real + loss_fake_f + loss_fake_p)
 
     def call(self, inputs):
@@ -72,7 +72,9 @@ class GeneratorLossLayer(Layer):
         super(GeneratorLossLayer, self).__init__(**kwargs)
 
     def lossfun(self, x_r, x_f, f_D_x_f, f_D_x_r, f_C_x_r, f_C_x_f):
-        loss_x = K.mean(K.square(x_r - x_f))
+        x_r_clip = K.clip(x_r*.5+.5, K.epsilon(), 1.-K.epsilon())
+        x_f_clip = K.clip(x_f*.5+.5, K.epsilon(), 1.-K.epsilon())
+        loss_x = K.mean(K.binary_crossentropy(x_r_clip, x_f_clip))
         loss_d = K.mean(K.square(f_D_x_r - f_D_x_f))
         loss_c = K.mean(K.square(f_C_x_r - f_C_x_f))
 
@@ -230,7 +232,7 @@ class CVAEGAN(object):
         self.cls_trainer = Model(inputs=[x_r, c],
                                  outputs=[c_loss])
         self.cls_trainer.compile(loss=None,
-                                 optimizer=Adam(lr=1e-4, beta_1=0.5, clipvalue=0.8))
+                                 optimizer=Adam(lr=5e-5, beta_1=0.5, clipvalue=0.8))
         self.cls_trainer.summary()
 
         # Build discriminator trainer
@@ -242,7 +244,7 @@ class CVAEGAN(object):
         self.dis_trainer = Model(inputs=[x_r, c, z_p],
                                  outputs=[d_loss])
         self.dis_trainer.compile(loss=None,
-                                 optimizer=Adam(lr=1e-4, beta_1=0.5, clipvalue=0.8))
+                                 optimizer=Adam(lr=5e-5, beta_1=0.5, clipvalue=0.8))
         self.dis_trainer.summary()
 
         # Build generator trainer
@@ -254,7 +256,7 @@ class CVAEGAN(object):
         self.dec_trainer = Model(inputs=[x_r, c, z_p],
                                  outputs=[g_loss, gd_loss, gc_loss])
         self.dec_trainer.compile(loss=None,
-                                 optimizer=Adam(lr=1e-4, beta_1=0.5, clipvalue=0.8))
+                                 optimizer=Adam(lr=5e-5, beta_1=0.5, clipvalue=0.8))
 
         # Build autoencoder
         set_trainable(self.f_enc, True)
@@ -265,7 +267,7 @@ class CVAEGAN(object):
         self.enc_trainer = Model(inputs=[x_r, c, z_p],
                                 outputs=[g_loss, kl_loss])
         self.enc_trainer.compile(loss=None,
-                                 optimizer=Adam(lr=1e-4, beta_1=0.5, clipvalue=0.8))
+                                 optimizer=Adam(lr=2e-5, beta_1=0.5, clipvalue=0.8))
         self.enc_trainer.summary()
 
     def build_encoder(self, output_dims, k=4):

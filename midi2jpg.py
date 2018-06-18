@@ -39,7 +39,7 @@ for filename in os.listdir(prefix):
         swLine = np.zeros(bounded, dtype=np.float32)
         lastTick = 0.
         for v in track:
-            if isinstance(v, midi.ProgramChangeEvent) and v.data[0]!=0:
+            if isinstance(v, midi.ProgramChangeEvent) and v.data[0]>8:
                 break
             if hasattr(v, 'tick') :
                 tick = float(v.tick)/speedRatio/ResScale
