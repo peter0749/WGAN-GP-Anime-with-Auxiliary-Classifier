@@ -72,11 +72,9 @@ class GeneratorLossLayer(Layer):
         super(GeneratorLossLayer, self).__init__(**kwargs)
 
     def lossfun(self, x_r, x_f, f_D_x_f, f_D_x_r, f_C_x_r, f_C_x_f):
-        x_r_clip = K.clip(x_r*.5+.5, K.epsilon(), 1.-K.epsilon())
-        x_f_clip = K.clip(x_f*.5+.5, K.epsilon(), 1.-K.epsilon())
-        loss_x = K.mean(K.binary_crossentropy(x_r_clip, x_f_clip))
-        loss_d = K.mean(K.square(f_D_x_r - f_D_x_f))
-        loss_c = K.mean(K.square(f_C_x_r - f_C_x_f))
+        loss_x = K.mean(K.abs(x_r - x_f))
+        loss_d = K.mean(K.abs(f_D_x_r - f_D_x_f))
+        loss_c = K.mean(K.abs(f_C_x_r - f_C_x_f))
 
         return loss_x + loss_d + loss_c
 
