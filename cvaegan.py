@@ -374,18 +374,18 @@ class CVAEGAN(object):
 
         return Model(inputs, [x, f])
 
-    def build_classifier(self):
+    def build_classifier(self, k=4):
         inputs = Input(shape=self.input_shape)
 
         x = inputs
         
-        x = conv(f=128, k=4, stride=2)(x)
+        x = conv(f=128, k=k, stride=2)(x)
         x = LeakyReLU(0.2) (x)
-        x = conv(f=256, k=4, stride=2)(x)
+        x = conv(f=256, k=k, stride=2)(x)
         x = LeakyReLU(0.2) (x)
-        x = conv(f=256, k=4, stride=2)(x)
+        x = conv(f=256, k=k, stride=2)(x)
         x = LeakyReLU(0.2) (x)
-        x = conv(f=512, k=4, stride=2)(x)
+        x = conv(f=512, k=k, stride=2)(x)
         x = LeakyReLU(0.2) (x)
 
         f = Flatten()(x)
