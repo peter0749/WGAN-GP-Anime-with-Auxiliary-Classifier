@@ -1,6 +1,5 @@
 import os
 import numpy as np
-
 import keras
 from keras.engine.topology import Layer
 from keras.models import Model
@@ -8,10 +7,8 @@ from keras.layers import Input, Flatten, Dense, Lambda, Reshape, Concatenate
 from keras.layers import Activation, LeakyReLU, ELU
 from keras.regularizers import l2
 from keras.layers import Conv2D, Conv2DTranspose, UpSampling2D
-# from keras.optimizers import Adam
 from weightnorm import AdamWithWeightnorm as Adam
 from keras import backend as K
-
 from models import conv, _res_conv, up_bilinear, set_trainable
 
 def sample_normal(args):
@@ -67,8 +64,9 @@ class DiscriminatorLossLayer(Layer):
 class GeneratorLossLayer(Layer):
     __name__ = 'generator_loss_layer'
 
-    def __init__(self, **kwargs):
+    def __init__(self, lambda_2=1.0, **kwargs):
         self.is_placeholder = True
+        self.lambda_2 = lambda_2
         super(GeneratorLossLayer, self).__init__(**kwargs)
 
     def lossfun(self, x_r, x_f, f_D_x_f, f_D_x_r, f_C_x_r, f_C_x_f):
@@ -76,7 +74,7 @@ class GeneratorLossLayer(Layer):
         loss_d = K.mean(K.abs(f_D_x_r - f_D_x_f))
         loss_c = K.mean(K.abs(f_C_x_r - f_C_x_f))
 
-        return loss_x + loss_d + loss_c
+        return (loss_x + loss_d + loss_c) * self.lambda_2
 
     def call(self, inputs):
         x_r = inputs[0]
@@ -90,37 +88,57 @@ class GeneratorLossLayer(Layer):
 
         return x_r
 
-class FeatureMatchingLayer(Layer):
-    __name__ = 'feature_matching_layer'
+class FeatureMatchingLayer_GD(Layer):
+    __name__ = 'feature_matching_layer_GD'
 
-    def __init__(self, **kwargs):
+    def __init__(self, lambda_3=1e-3, **kwargs):
         self.is_placeholder = True
-        super(FeatureMatchingLayer, self).__init__(**kwargs)
+        self.lambda_3 = lambda_3
+        super(FeatureMatchingLayer_GD, self).__init__(**kwargs)
 
     def lossfun(self, f1, f2):
         f1_avg = K.mean(f1, axis=0)
         f2_avg = K.mean(f2, axis=0)
-        return 0.5 * K.mean(K.square(f1_avg - f2_avg))
+        return 0.5 * K.mean(K.square(f1_avg - f2_avg)) * self.lambda_3
 
     def call(self, inputs):
         f1 = inputs[0]
         f2 = inputs[1]
         loss = self.lossfun(f1, f2)
         self.add_loss(K.clip(loss, -100, 100), inputs=inputs)
+        return f1
 
+class FeatureMatchingLayer_GC(Layer):
+    __name__ = 'feature_matching_layer_GC'
+
+    def __init__(self, lambda_4=1e-3, **kwargs):
+        self.is_placeholder = True
+        self.lambda_4 = lambda_4
+        super(FeatureMatchingLayer_GC, self).__init__(**kwargs)
+    def call(self, inputs):
+        f1 = K.batch_flatten(inputs[0]) # (batch_size, ?)
+        f2 = K.batch_flatten(inputs[1]) # (batch_size, ?)
+        y   = inputs[2] # (batch_size, class_n)
+        y_p = inputs[3] # (batch_size, class_n)
+        
+        f1_ma = K.mean(K.dot(K.transpose(f1), y  ), axis=0)
+        f2_ma = K.mean(K.dot(K.transpose(f2), y_p), axis=0)
+        
+        loss = 0.5 * K.mean(K.square(f1_ma-f2_ma)) * self.lambda_4
+        self.add_loss(K.clip(loss, -100, 100), inputs=inputs)
         return f1
 
 class KLLossLayer(Layer):
     __name__ = 'kl_loss_layer'
 
-    def __init__(self, weight=1.0, **kwargs):
+    def __init__(self, lambda_1=1.0, **kwargs):
         self.is_placeholder = True
-        self.kl_loss_weight = weight
+        self.lambda_1 = lambda_1
         super(KLLossLayer, self).__init__(**kwargs)
 
     def lossfun(self, z_avg, z_log_var):
         kl_loss = K.clip(-0.5 * K.mean(1.0 + z_log_var - K.square(z_avg) - K.exp(z_log_var)), -100.0, 100.0)
-        return kl_loss * self.kl_loss_weight
+        return kl_loss * self.lambda_1
 
     def call(self, inputs):
         z_avg = inputs[0]
@@ -134,8 +152,11 @@ class CVAEGAN(object):
     def __init__(self,
         input_shape=(64, 64, 3),
         num_attrs=40,
-        z_dims = 128,
-        kl_weight = 1.0,
+        z_dims = 128,     # Default setting in paper:
+        lambda_1 = 1.0,   # 3.0
+        lambda_2 = 1.0,   # 1.0
+        lambda_3 = 1.0,   # 1e-3
+        lambda_4 = 1.0,   # 1e-3
         name='cvaegan',
         **kwargs
     ):
@@ -143,7 +164,10 @@ class CVAEGAN(object):
         self.input_shape = input_shape
         self.num_attrs = num_attrs
         self.z_dims = z_dims
-        self.kl_weight = kl_weight
+        self.lambda_1 = lambda_1
+        self.lambda_2 = lambda_2
+        self.lambda_3 = lambda_3
+        self.lambda_4 = lambda_4
 
         self.f_enc = None
         self.f_dec = None
@@ -161,22 +185,25 @@ class CVAEGAN(object):
 
         batchsize = len(x_r)
         z_p = np.random.normal(size=(batchsize, self.z_dims)).astype('float32')
-
-        # Train autoencoder
-        self.enc_trainer.train_on_batch([x_r, c, z_p], None)
-
-        # Train generator
-        g_loss = self.dec_trainer.train_on_batch([x_r, c, z_p], None)
+        c_p = keras.utils.to_categorical(np.random.randint(self.num_attrs, size=batchsize), self.num_attrs)
 
         # Train classifier
-        self.cls_trainer.train_on_batch([x_r, c], None)
+        c_loss = self.cls_trainer.train_on_batch([x_r, c], None)
 
         # Train discriminator
-        d_loss = self.dis_trainer.train_on_batch([x_r, c, z_p], None)
+        d_loss = self.dis_trainer.train_on_batch([x_r, c, c_p, z_p], None)
 
+        # Train generator
+        g_loss = self.dec_trainer.train_on_batch([x_r, c, c_p, z_p], None)
+        
+        # Train autoencoder
+        e_loss = self.enc_trainer.train_on_batch([x_r, c, z_p], None)
+        
         loss = {
             'g_loss': g_loss,
-            'd_loss': d_loss
+            'd_loss': d_loss,
+            'c_loss': c_loss,
+            'e_loss': e_loss
         }
         return loss
 
@@ -192,18 +219,19 @@ class CVAEGAN(object):
         # Algorithm
         x_r = Input(shape=self.input_shape)
         c = Input(shape=(self.num_attrs,))
+        c_p = Input(shape=(self.num_attrs,))
         z_params = self.f_enc([x_r, c])
 
         z_avg = Lambda(lambda x: x[:, :self.z_dims], output_shape=(self.z_dims,))(z_params)
         z_log_var = Lambda(lambda x: x[:, self.z_dims:], output_shape=(self.z_dims,))(z_params)
         z = Lambda(sample_normal, output_shape=(self.z_dims,))([z_avg, z_log_var])
 
-        kl_loss = KLLossLayer(weight = self.kl_weight)([z_avg, z_log_var])
+        kl_loss = KLLossLayer(lambda_1 = self.lambda_1)([z_avg, z_log_var])
 
         z_p = Input(shape=(self.z_dims,))
 
         x_f = self.f_dec([z, c])
-        x_p = self.f_dec([z_p, c])
+        x_p = self.f_dec([z_p, c_p])
 
         y_r, f_D_x_r = self.f_dis(x_r)
         y_f, f_D_x_f = self.f_dis(x_f)
@@ -213,11 +241,11 @@ class CVAEGAN(object):
 
         c_r, f_C_x_r = self.f_cls(x_r)
         c_f, f_C_x_f = self.f_cls(x_f)
-        c_p, f_C_x_p = self.f_cls(x_p)
+        c_p_ , f_C_x_p = self.f_cls(x_p)
 
-        g_loss = GeneratorLossLayer()([x_r, x_f, f_D_x_r, f_D_x_f, f_C_x_r, f_C_x_f])
-        gd_loss = FeatureMatchingLayer()([f_D_x_r, f_D_x_p])
-        gc_loss = FeatureMatchingLayer()([f_C_x_r, f_C_x_p])
+        g_loss = GeneratorLossLayer(lambda_2 = self.lambda_2)([x_r, x_f, f_D_x_r, f_D_x_f, f_C_x_r, f_C_x_f])
+        gd_loss = FeatureMatchingLayer_GD(lambda_3 = self.lambda_3)([f_D_x_r, f_D_x_p])
+        gc_loss = FeatureMatchingLayer_GC(lambda_4 = self.lambda_4)([f_C_x_r, f_C_x_p, c, c_p])
 
         c_loss = ClassifierLossLayer()([c, c_r])
 
@@ -239,7 +267,7 @@ class CVAEGAN(object):
         set_trainable(self.f_dis, True)
         set_trainable(self.f_cls, False)
 
-        self.dis_trainer = Model(inputs=[x_r, c, z_p],
+        self.dis_trainer = Model(inputs=[x_r, c, c_p, z_p],
                                  outputs=[d_loss])
         self.dis_trainer.compile(loss=None,
                                  optimizer=Adam(lr=5e-5, beta_1=0.5, clipvalue=0.8))
@@ -251,7 +279,7 @@ class CVAEGAN(object):
         set_trainable(self.f_dis, False)
         set_trainable(self.f_cls, False)
 
-        self.dec_trainer = Model(inputs=[x_r, c, z_p],
+        self.dec_trainer = Model(inputs=[x_r, c, c_p, z_p],
                                  outputs=[g_loss, gd_loss, gc_loss])
         self.dec_trainer.compile(loss=None,
                                  optimizer=Adam(lr=5e-5, beta_1=0.5, clipvalue=0.8))
