@@ -36,7 +36,7 @@ generator_model, discriminator_model, decoder, discriminator = build_gan(h=h, w=
 
 (x_train, _), (___, __) = mnist.load_data()
 x_train = np.squeeze(x_train.astype(np.float32)-127.5) / 127.5
-x_train = np.pad(x_train, ((0,0),(2,2),(2,2)), 'constant', constant_values=0)[...,np.newaxis]
+x_train = np.pad(x_train, ((0,0),(2,2),(2,2)), 'constant', constant_values=-1)[...,np.newaxis]
 
 if not os.path.exists('./preview'):
     os.makedirs('./preview')

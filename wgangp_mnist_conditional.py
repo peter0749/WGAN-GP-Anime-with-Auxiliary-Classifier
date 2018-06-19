@@ -37,7 +37,7 @@ generator_model, discriminator_model, classifier_model, generator, discriminator
 
 (x_train, y_train), (___, __) = mnist.load_data()
 x_train = np.squeeze(x_train.astype(np.float32)-127.5) / 127.5
-x_train = np.pad(x_train, ((0,0),(2,2),(2,2)), 'constant', constant_values=0)[...,np.newaxis]
+x_train = np.pad(x_train, ((0,0),(2,2),(2,2)), 'constant', constant_values=-1)[...,np.newaxis]
 y_train = keras.utils.to_categorical(y_train, 10)
 
 if not os.path.exists('./preview'):

@@ -18,6 +18,8 @@ parser.add_argument('--preview_iteration', type=int, default=500, required=False
                     help='preview_iteration')
 parser.add_argument('--no_augmentation', action='store_true', default=False,
                     help='')
+parser.add_argument('--mode', type=str, default='l1', required=False,
+                    help='l1/l2/bce')
 args = parser.parse_args()
 
 import numpy as np
@@ -53,7 +55,7 @@ seq = get_imgaug()
 if not os.path.exists('./preview'):
     os.makedirs('./preview')
 
-trainer = CVAEGAN(input_shape=(h, w, c), num_attrs=N_CLASS, z_dims=latent_dim)  
+trainer = CVAEGAN(input_shape=(h, w, c), num_attrs=N_CLASS, z_dims=latent_dim, reconstruct_loss=args.mode)  
 generator = trainer.return_models()[1]
 
 i_counter = 0

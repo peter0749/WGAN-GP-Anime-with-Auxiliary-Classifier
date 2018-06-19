@@ -33,7 +33,7 @@ latent_dim = 100
 
 (x_train, y_train), (___, __) = mnist.load_data()
 x_train = np.squeeze(x_train.astype(np.float32)-127.5) / 127.5
-x_train = np.pad(x_train, ((0,0),(2,2),(2,2)), 'constant', constant_values=0)[...,np.newaxis]
+x_train = np.pad(x_train, ((0,0),(2,2),(2,2)), 'constant', constant_values=-1)[...,np.newaxis]
 
 y_train = keras.utils.to_categorical(y_train, 10)
 N_CLASS = 10
@@ -41,7 +41,7 @@ N_CLASS = 10
 if not os.path.exists('./preview'):
     os.makedirs('./preview')
 
-trainer = CVAEGAN(input_shape=(h, w, c), num_attrs=N_CLASS, z_dims=latent_dim)  
+trainer = CVAEGAN(input_shape=(h, w, c), num_attrs=N_CLASS, z_dims=latent_dim, reconstruct_loss='bce')  
 generator = trainer.return_models()[1]
 
 i_counter = 0

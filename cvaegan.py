@@ -64,15 +64,25 @@ class DiscriminatorLossLayer(Layer):
 class GeneratorLossLayer(Layer):
     __name__ = 'generator_loss_layer'
 
-    def __init__(self, lambda_2=1.0, **kwargs):
+    def __init__(self, reconstruct_loss='l1', lambda_2=1.0, **kwargs):
         self.is_placeholder = True
+        self.reconstruct_loss = reconstruct_loss
         self.lambda_2 = lambda_2
         super(GeneratorLossLayer, self).__init__(**kwargs)
 
     def lossfun(self, x_r, x_f, f_D_x_f, f_D_x_r, f_C_x_r, f_C_x_f):
-        loss_x = K.mean(K.abs(x_r - x_f))
-        loss_d = K.mean(K.abs(f_D_x_r - f_D_x_f))
-        loss_c = K.mean(K.abs(f_C_x_r - f_C_x_f))
+        if self.reconstruct_loss == 'l1':
+            loss_x = K.mean(K.abs(x_r - x_f))
+            loss_d = K.mean(K.abs(f_D_x_r - f_D_x_f))
+            loss_c = K.mean(K.abs(f_C_x_r - f_C_x_f))
+        elif self.reconstruct_loss == 'l2':
+            loss_x = K.mean(K.square(x_r - x_f))
+            loss_d = K.mean(K.square(f_D_x_r - f_D_x_f))
+            loss_c = K.mean(K.square(f_C_x_r - f_C_x_f))
+        else:
+            loss_x = K.mean(K.binary_crossentropy(K.clip(x_r*.5+.5, K.epsilon(), 1.-K.epsilon()) , K.clip(x_f*.5+.5, K.epsilon(), 1.-K.epsilon())))
+            loss_d = K.mean(K.square(f_D_x_r - f_D_x_f))
+            loss_c = K.mean(K.square(f_C_x_r - f_C_x_f))
 
         return (loss_x + loss_d + loss_c) * self.lambda_2
 
@@ -157,6 +167,7 @@ class CVAEGAN(object):
         lambda_2 = 1.0,   # 1.0
         lambda_3 = 1.0,   # 1e-3
         lambda_4 = 1.0,   # 1e-3
+        reconstruct_loss = 'l1',
         name='cvaegan',
         **kwargs
     ):
@@ -168,6 +179,7 @@ class CVAEGAN(object):
         self.lambda_2 = lambda_2
         self.lambda_3 = lambda_3
         self.lambda_4 = lambda_4
+        self.reconstruct_loss = reconstruct_loss
 
         self.f_enc = None
         self.f_dec = None
@@ -243,7 +255,7 @@ class CVAEGAN(object):
         c_f, f_C_x_f = self.f_cls(x_f)
         c_p_ , f_C_x_p = self.f_cls(x_p)
 
-        g_loss = GeneratorLossLayer(lambda_2 = self.lambda_2)([x_r, x_f, f_D_x_r, f_D_x_f, f_C_x_r, f_C_x_f])
+        g_loss = GeneratorLossLayer(reconstruct_loss=self.reconstruct_loss, lambda_2 = self.lambda_2)([x_r, x_f, f_D_x_r, f_D_x_f, f_C_x_r, f_C_x_f])
         gd_loss = FeatureMatchingLayer_GD(lambda_3 = self.lambda_3)([f_D_x_r, f_D_x_p])
         gc_loss = FeatureMatchingLayer_GC(lambda_4 = self.lambda_4)([f_C_x_r, f_C_x_p, c, c_p])
 
