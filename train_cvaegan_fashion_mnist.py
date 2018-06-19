@@ -57,19 +57,12 @@ for epoch in range(EPOCHS):
             
             losses = trainer.train_on_batch((image_batch, image_label))
             
-            '''
-            loss = {
-            'g_loss': g_loss,
-            'd_loss': d_loss
-            }
-            '''
-            
             if i_counter % args.preview_iteration == 0:
                 generate_images_cvaegan(generator, './preview', h, w, c, latent_dim, 5, N_CLASS, i_counter)
                 trainer.save_models('./weights', i_counter)
             i_counter += 1
             
-            msg = 'g_loss: {:.2f}, d_loss: {:.2f}'.format(losses['g_loss'], losses['d_loss'])
+            msg = 'g_loss: {:.2f}, d_loss: {:.2f}, c_loss: {:.2f}, e_loss: {:.2f}'.format(losses['g_loss'], losses['d_loss'], losses['c_loss'], losses['e_loss'])
             t.set_description(msg)
             t.update()
             
