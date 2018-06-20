@@ -163,7 +163,7 @@ class CVAEGAN(object):
         input_shape=(64, 64, 3),
         num_attrs=40,
         z_dims = 128,     # Default setting in paper:
-        lambda_1 = 1.0,   # 3.0
+        lambda_1 = 0.2,   # 3.0
         lambda_2 = 1.0,   # 1.0
         lambda_3 = 1.0,   # 1e-3
         lambda_4 = 1.0,   # 1e-3
