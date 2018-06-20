@@ -46,7 +46,7 @@ w, h, c = args.width, args.height, args.channels
 latent_dim = args.z_dim
 D_ITER = 5
 
-train_generator = data_generator(args.dataset, height=h, width=w, channel=c, shuffle=True, normalize=not use_data_augmentation, save_tags=True)
+train_generator = data_generator(args.dataset, height=h, width=w, channel=c, shuffle=True, normalize=not use_data_augmentation, save_tags=True, batch_size=BS)
 N_CLASS = len(train_generator.tags)
 print('This dataset has %d unique tags'%N_CLASS)
 
