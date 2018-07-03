@@ -30,13 +30,16 @@ parser.add_argument('--runs', type=int, default=10, required=False, help='')
 args = parser.parse_args()
 
 decoder = load_model(args.decoder, custom_objects={'tf':tf, 'PixelShuffler':PixelShuffler, 'up_bilinear':up_bilinear})
-encoder = load_model(args.encoder, custom_objects={'tf':tf, 'PixelShuffler':PixelShuffler, 'up_bilinear':up_bilinear})
+encoder = load_model(args.encoder, custom_objects={'tf':tf, 'PixelShuffler':PixelShuffler, 'up_bilinear':up_bilinear}) if os.path.exists(args.encoder) else None
 img = (resize(imread(args.input), decoder.output_shape[-3:-1], preserve_range=True).astype(np.float32) - 127.5) / 127.5
+if img.ndim==2:
+    img = img[...,np.newaxis]
 def Fitness(img, decoder):
     def mse(x):
         return np.mean(np.square(img[np.newaxis,...]-decoder.predict(x)).reshape(x.shape[0], -1), axis=-1)
     return mse
-x_mean = encoder.predict(img[np.newaxis,...])
+if not encoder is None:
+    x_mean = encoder.predict(img[np.newaxis,...])
 es = ES(fitness=Fitness(img, decoder), dna_length=decoder.input_shape[-1], bound=[-args.std*2.0, args.std*2.0], generations=args.iterations, 
         population_size=args.populations, offspring_size=args.offsprings, type='minimize')
 best_img = None
@@ -44,9 +47,11 @@ best_z = None
 best_score = -1
 for i in range(args.runs):
     print('Runs: %d / %d'%(i+1, args.runs))
-    x_mutate = np.random.randn(args.populations, *x_mean.shape[1:]) * args.std
-    pop = dict(DNA=x_mean.repeat(args.populations, axis=0), mut_strength=x_mutate)
-    # pop = es.initialization()
+    if encoder is None:
+        pop = es.initialization()
+    else:
+        x_mutate = np.random.randn(args.populations, *x_mean.shape[1:]) * args.std
+        pop = dict(DNA=x_mean.repeat(args.populations, axis=0), mut_strength=x_mutate)
     for ite in range(args.iterations):
         kids = es.get_offspring(pop)
         pop = es.put_kids(pop, kids)
