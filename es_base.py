@@ -44,3 +44,14 @@ class ES(object):
         for key in ['DNA', 'mut_strength']:
             pop[key] = pop[key][good_idx]
         return pop
+    def fit(self, initial_pop, runs=1, show_progress=False):
+        for r in range(runs):
+            pop = initial_pop.copy()
+            for f in range(self.gen):
+                kids = self.get_offspring(pop)
+                pop  = self.put_kids(pop, kids)
+                pop  = self.selection(pop)
+                fitness = self.F(pop['DNA'][-1:]).mean()
+                if show_progress:
+                    print('[%d/%d] | [%d/%d] | fitness: %.2f'%(r+1,runs,f+1,self.gen,fitness))
+        return fitness
