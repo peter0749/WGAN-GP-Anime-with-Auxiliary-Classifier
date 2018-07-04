@@ -61,7 +61,7 @@ def midi_score(piano_roll, pi_=4, bar_multiplier=4, phrase_multiplier=4): # shap
                 a = note_index[i]
                 b = note_index[j]
                 diff = b-a
-                if diff>24:
+                if diff>18:
                     intra_note_score -= 30
                 elif diff<12:
                     intra_note_score += score_table[int(diff)]
