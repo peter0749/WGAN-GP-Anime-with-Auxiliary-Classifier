@@ -37,7 +37,7 @@ if img.ndim==2:
     img = img[...,np.newaxis]
 def Fitness(img, decoder):
     def bce(x):
-        y_t, y_p = np.clip(img[np.newaxis,...],1e-8,1-1e-8), np.clip(decoder.predict(x), 1e-8, 1-1e-8)
+        y_t, y_p = np.clip(img[np.newaxis,...]*.5+.5,1e-8,1-1e-8), np.clip(decoder.predict(x)*.5+.5, 1e-8, 1-1e-8)
         return np.mean(( y_t*np.log(y_p) + (1-y_t)*np.log(1-y_p)  ).reshape(x.shape[0], -1), axis=-1)
     return bce
 if not encoder is None:
