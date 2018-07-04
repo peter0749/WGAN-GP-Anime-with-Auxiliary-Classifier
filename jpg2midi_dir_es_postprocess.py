@@ -101,7 +101,9 @@ for fn, filename in enumerate(dirs):
     midi.write_midifile(outpath, pattern)
 all_fitness = -np.asarray(all_fitness)
 all_outputs = np.array(all_outputs)
-tops = all_outputs[all_fitness.argsort()][:5]
+good_idx = all_fitness.argsort()
+tops = all_outputs[good_idx][:5]
+top_scores = -all_fitness[good_idx][:5]
 with open('top5.txt', 'w') as fp:
-    for top in tops:
-        fp.write('%s\n'%str(top))
+    for filename, score in zip(tops, top_scores):
+        fp.write('%s, %.2f\n'%(str(filename), score))
