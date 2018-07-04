@@ -24,8 +24,8 @@ if not os.path.exists(args.output):
 
 all_fitness = []
 all_outputs = []
-
-for filename in os.listdir(args.input):
+dirs = os.listdir(args.input)
+for fn, filename in enumerate(dirs):
     fullpath = args.input+'/'+filename
     piano_roll = np.array(Image.open(fullpath))
     piano_roll = np.transpose(np.flip(piano_roll, 0), (1,0))
@@ -48,12 +48,12 @@ for filename in os.listdir(args.input):
     
     es = ES(fitness=F, dna_length=dna.shape[-1], bound=[0, 255], 
         population_size=args.populations, offspring_size=args.offsprings, type='maximize')
-    for _ in range(args.generations):
+    for f in range(args.generations):
         kids = es.get_offspring(pop)
         pop  = es.put_kids(pop, kids)
         pop  = es.selection(pop)
         fitness = F(pop['DNA'][-1:]).mean()
-        print('fitness: %.2f'%fitness)
+        print('[%d/%d] | [%d/%d] | fitness: %.2f'%(fn+1,len(dirs),f+1,args.generations,fitness))
     piano_roll, threshold = pop['DNA'][-1,:-1].reshape(shape), pop['DNA'][-1,-1]
     piano_roll = np.lib.pad(piano_roll, ((0,1),(0,1)), 'constant', constant_values=((0,0),(0,0)))
     piano_roll[piano_roll<threshold] = 0
