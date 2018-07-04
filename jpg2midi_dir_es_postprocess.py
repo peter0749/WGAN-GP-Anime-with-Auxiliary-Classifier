@@ -48,6 +48,7 @@ for fn, filename in enumerate(dirs):
     
     es = ES(fitness=F, dna_length=dna.shape[-1], bound=[0, 255], generations=args.generations,
         population_size=args.populations, offspring_size=args.offsprings, type='maximize')
+    '''
     print('file: %d/%d'%(fn+1,len(dirs)))
     fitness = es.fit(pop, runs=1, show_progress=True)
     '''
@@ -57,7 +58,7 @@ for fn, filename in enumerate(dirs):
         pop  = es.selection(pop)
         fitness = F(pop['DNA'][-1:]).mean()
         print('[%d/%d] | [%d/%d] | fitness: %.2f'%(fn+1,len(dirs),f+1,args.generations,fitness))
-    '''
+    
     piano_roll, threshold = pop['DNA'][-1,:-1].reshape(shape), pop['DNA'][-1,-1]
     piano_roll = np.lib.pad(piano_roll, ((0,1),(0,1)), 'constant', constant_values=((0,0),(0,0)))
     piano_roll[piano_roll<threshold] = 0
