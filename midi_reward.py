@@ -36,6 +36,8 @@ def midi_score(piano_roll, pi_=4, bar_multiplier=4, phrase_multiplier=4): # shap
     for tick in range(0, len(piano_roll), phrase):
         segment = piano_roll[tick:tick+phrase]
         natural = np.where(segment>0)[1] % 12
+        if len(natural)==0:
+            continue
         hist_std = np.histogram(natural, bins=np.arange(12), range=(0,12), normed=True)[0].std() * 3
         stable_score -= hist_std
         
