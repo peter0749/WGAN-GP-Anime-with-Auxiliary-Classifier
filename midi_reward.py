@@ -100,7 +100,7 @@ def midi_score(piano_roll, pi_=4, bar_multiplier=4, phrase_multiplier=4): # shap
         prev_head = head
         prev_interval = curr_interval
         a = (piano_roll>0).sum()
-        b = (piano_roll==0).sum()
-        if a / (a+b) < 0.03:
+        b = (piano_roll<=0).sum()
+        if (a+b) < 1e-4 or a / (a+b) < 0.03:
             note_density_score -= 100
     return np.nan_to_num(intra_note_score + inter_note_score + playable + tempo_score + stable_score + note_density_score)
