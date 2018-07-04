@@ -17,7 +17,7 @@ parser.add_argument('--offsprings', type=int, default=200, required=False, help=
 parser.add_argument('--pi', type=int, default=4, required=False, help='')
 parser.add_argument('--bar_multiplier', type=int, default=4, required=False, help='')
 parser.add_argument('--phrase_multiplier', type=int, default=4, required=False, help='')
-parser.add_argument('--dice_orignal', type=float, default=0.2, required=False, help='')
+parser.add_argument('--dice_original', type=float, default=0.2, required=False, help='')
 args = parser.parse_args()
 
 if not os.path.exists(args.output):
@@ -55,7 +55,7 @@ for fn, filename in enumerate(dirs):
                 scores.append(score)
             return np.asarray(scores)
         return F_block
-    fitness_func = F(piano_roll, args.dice_orignal)
+    fitness_func = F(piano_roll, args.dice_original)
     es = ES(fitness=fitness_func, dna_length=dna.shape[-1], bound=[0, 255], generations=args.generations,
         population_size=args.populations, offspring_size=args.offsprings, type='maximize')
     '''
@@ -75,7 +75,10 @@ for fn, filename in enumerate(dirs):
     piano_roll[piano_roll>0] = 255
     piano_roll = piano_roll.astype(np.uint8)
     
-    all_fitness.append(fitness)
+    score = midi_score(piano_roll, args.pi, args.bar_multiplier, args.phrase_multiplier)
+    if np.sum(piano_roll>0) / float(np.sum(piano_roll>=0)) < 0.005:
+        score -= 1e6
+    all_fitness.append(score)
     
     pattern = midi.Pattern(resolution=4)
     track = midi.Track()
