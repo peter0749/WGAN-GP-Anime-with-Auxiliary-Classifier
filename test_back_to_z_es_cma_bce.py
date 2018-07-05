@@ -38,7 +38,7 @@ if img.ndim==2:
 def Fitness(img, decoder):
     def bce(x):
         y_t, y_p = np.clip(img[np.newaxis,...]*.5+.5,1e-8,1-1e-8), np.clip(decoder.predict(x)*.5+.5, 1e-8, 1-1e-8)
-        return np.mean(( y_t*np.log(y_p) + (1-y_t)*np.log(1-y_p)  ).reshape(x.shape[0], -1), axis=-1)
+        return -np.mean(( y_t*np.log(y_p) + (1-y_t)*np.log(1-y_p)  ).reshape(x.shape[0], -1), axis=-1)
     return bce
 if not encoder is None:
     x_mean = encoder.predict(img[np.newaxis,...])
@@ -61,7 +61,7 @@ for i in range(args.runs):
     z = np.asarray(es.result[0])
     img_reconstruct = decoder.predict(z[np.newaxis,...])[0]
     y_t, y_p = np.clip(img*.5+.5,1e-8,1-1e-8), np.clip(img_reconstruct*.5+.5,1e-8,1-1e-8)
-    bce = np.mean( y_t*np.log(y_p) + (1-y_t)*np.log(1-y_p) )
+    bce = -np.mean( y_t*np.log(y_p) + (1-y_t)*np.log(1-y_p) )
     print('bce: {:.2f}'.format(bce))
     if bce>best_score:
         best_score = bce

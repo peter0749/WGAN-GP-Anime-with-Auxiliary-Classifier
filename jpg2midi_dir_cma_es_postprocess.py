@@ -56,7 +56,7 @@ for fn, filename in enumerate(dirs):
     es = ES(dna,args.sigma)
     for f in range(args.generations):
         dnas = np.asarray(es.ask())
-        es.tell(dnas, fitness_func(dnas))
+        es.tell(dnas, -fitness_func(dnas))
         es.disp()
     es.result_pretty()
     
